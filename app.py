@@ -27,7 +27,15 @@ def create_app():
     app = Flask(__name__)
     env = os.environ.get('FLASK_ENV', 'default')
     app.config.from_object(config[env])
-    app.secret_key = os.urandom(24)
+
+    # Use environment SECRET_KEY so session cookies stay valid across Cloud Run instances.
+    secret = os.environ.get('SECRET_KEY')
+    if secret:
+        app.secret_key = secret
+    else:
+        # Local fallback; change this before production if you care.
+        app.secret_key = 'dev-secret-local-only'
+
     return app
 
 app = create_app()
@@ -266,30 +274,74 @@ def assessment():
 
 @app.route('/save_answer', methods=['POST'])
 def save_answer():
+    # Helpful logs — these appear in Cloud Run logs
+    app.logger.info("SAVE_ANSWER called. Session keys: %s", list(session.keys()) if session else [])
 
+    # If session expired / missing -> explicit error (frontend can handle)
     if 'current_question' not in session:
-        return jsonify({'success': False, 'redirect': url_for('basic_info')})
+        app.logger.warning("Session missing current_question")
+        return jsonify({'success': False, 'msg': 'Session expired or missing', 'redirect': url_for('basic_info')}), 401
 
-    data = request.get_json(force=True)
+    try:
+        data = request.get_json(force=True)
+    except Exception as e:
+        app.logger.exception("Failed to parse JSON in save_answer")
+        return jsonify({'success': False, 'msg': 'Invalid JSON', 'error': str(e)}), 400
+
     qnum = data.get('question_number')
     ans = data.get('answer')
 
+    app.logger.info("Received answer: q=%s ans=%s", qnum, ans)
+
+    if qnum is None or ans is None:
+        app.logger.warning("Missing qnum or ans in payload")
+        return jsonify({'success': False, 'msg': 'Missing question_number or answer'}), 400
+
+    # Ensure answers map exists
+    if 'answers' not in session:
+        session['answers'] = {}
     session['answers'][str(qnum)] = ans
     session.modified = True
 
+    # advance counters
     if not session.get('tie_breaker_phase', False):
-        session['current_question'] += 1
+        session['current_question'] = session.get('current_question', 1) + 1
     else:
-        session['tie_breaker_answered'] += 1
+        session['tie_breaker_answered'] = session.get('tie_breaker_answered', 0) + 1
         session['current_question'] = (
-            len(session['shuffled_questions']) +
+            len(session.get('shuffled_questions', [])) +
             session['tie_breaker_answered'] + 1
         )
 
+    # recalc and store scores
     riasec_scores, _ = calculate_scores()
     session['riasec_scores'] = riasec_scores
+    session.modified = True
 
-    return jsonify({'success': True, 'redirect': url_for('assessment')})
+    response_payload = {
+        'success': True,
+        'redirect': url_for('assessment'),
+        'debug': {  # temporary debug — remove later
+            'current_question': session.get('current_question'),
+            'answers_count': len(session.get('answers', {})),
+            'riasec_scores': riasec_scores
+        }
+    }
+    app.logger.info("save_answer success. Debug: %s", response_payload['debug'])
+    return jsonify(response_payload)
+
+@app.route('/get_live_scores')
+def get_live_scores():
+    # frontend was calling this and got 404; return a sensible JSON
+    if 'riasec_scores' not in session:
+        return jsonify({'success': False, 'msg': 'No scores yet'}), 404
+
+    return jsonify({
+        'success': True,
+        'riasec_scores': session.get('riasec_scores', {}),
+        'current_question': session.get('current_question'),
+        'answers_count': len(session.get('answers', {}))
+    })
 
 @app.route('/submit_all_answers')
 def submit_all_answers():
