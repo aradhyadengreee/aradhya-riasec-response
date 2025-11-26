@@ -298,11 +298,33 @@ def resolve_riasec_code(riasec_scores):
 # -----------------------------
 # Google Sheets Saving
 # -----------------------------
-def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=None):
-    if not os.path.exists(CREDS_FILE):
-        raise FileNotFoundError(f"{CREDS_FILE} not found")
+from google.oauth2.service_account import Credentials
+import gspread
+from datetime import datetime
 
-    creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPE)
+def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=None):
+    # Embedded service account info
+    SERVICE_ACCOUNT_INFO = {
+        "type": "service_account",
+        "project_id": "riasec-responses",
+        "private_key_id": "ddd055de2197345d2bf0670980236cf5063464a4",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCVx87CSO5pKos0\nNVYVEVt2EL9xBuN0slgzzM2toRd+LNEw9gRZICKr7iC62PwpufMGvYuj8ptQMx9o\nkW6HrU2bx7sidIJSH3rx1+DVHE/DoR8BImfkquFC/0/yW8CyuU8gSkHaNfEW/pPM\nun8AHxw+1cLreKGkq0re74lgyipvJoanmR5mxHAFDfn9MFdUjBNBenrbDkvLEP/i\nB9fwDreqUrJFyc7fquUqOKlJCCUTHYuXhGDQc3xb+8sTLKweVsQN9KNaYkJmySVP\nQ7zVGpUQj8l0Ov0igtpqj+q4X+AgPlYSxT+vKbOLsIEeNP+QRnfwkBi+kSdNOwRK\nz4TsxT9PAgMBAAECggEAMO0z/QMV3gSntEY3+GnTFp4h6yn04wnfBgzAoxccNXsu\nWnACu5pjuQXwaxi2RmsXl/wSwVteoLQSbnYTRP63e0ujNX4Zk/n0j0uVhgfZhm37\nUsOKbIflTZ1Y4DJYoAkob8PR/xXfy0MdxKKnGcMP1va81W5yXvgVXP2iQpvHgMb1\nB1nDIHN/exktk4GD1/H4UWoEsa1yTiC7APQ6rXXDR6J1HS+aCy9OF/GNl/Qb5FTu\ncsNoUgtkEUuBux5R8O7a0Fr8qK9hmd1E8o1h1RI6Ci9GWd7tSPLhFfiXgTNWwuN9\nx/DGDu9OuzUFvH3k6YUZn1U3hjkR6X7gd73srNgLAQKBgQDD7qYTNVnGXXywHfER\nAfEqey1Y5YzwE4S2WPWTUBKTB6wzKpI+Q6wbvsEsNzVKQTxU47eLqMR2sWXE4nnx\nyZbEQ/Ynne6fyZLNWf1usFKBpffnKJP9Zr7lDzKtAeANUgB+9SBX5pzALpAxlDEF\nzitgSrH4ExviuSiU8xI4ZkBT6wKBgQDDswhY8T3kaOYisGHRToSFPgvQ4uuwuHfl\npA7gWP8BFDtj8RFnWCcL6oOq4A6x9y3nZkoFfxPHtwcQcV4A8N20zAeC9njelM6o\nIK3DNWD1nJxHNWUYgyE1J8fXneEdipRQSFP/IRKG8e+zljeeNrKWo2Tu+nhsWC0a\nHx/4+ga9LQKBgQC1YbKAybzoNBd/+tf2BLQ7vXhHeYo1nfwXytbcnx3y2wGBBIIJ\n/h/QN5Eg26MLsMSnWX/LXFsz/hnWYEq/mP1nh/rSxhPn/HVYgVxqIfTfbMPITPpj\ndcB20ND69Gd0LVukLEza0vR9vR1jqGqRk0D4jW2f2CDSjNKSwUs2xwH6LQKBgB2w\nDTYg8rixySe+BjjQZn4oGXbI1eRrN5UYvEEAfz7UqOXSbkd1Mgc2vl6vusr4qngO\nJnCLBJ8pfuLZr98IqzmAMiuF5HQvsuICgxm4AUuBRJvw17NOQT1lGYX2J25p1XIQ\nZt2vULY0AZ8GzM0tkw4TH365dIdLIRxzWFBW7arJAoGAASza0EMMVH546zGwSU6e\nLfzXFKdr1ScH8GlX2wUNrmVN0sJJPFYXJJcV8I6IAaU2FxE7rh9OJbVPABGAC6L9\nGAz/iSaVgjeL899yprUkns09GLwiGaz3q6h4UPvDbMjspV7czd4/QUkWhCflHsU9\nM/3ZOqYtDGdF65Jcap5m1DY=\n-----END PRIVATE KEY-----\n",
+        "client_email": "riasec-client@riasec-responses.iam.gserviceaccount.com",
+        "client_id": "109370773003926881947",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/riasec-client%40riasec-responses.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
+    }
+
+    SCOPE = ['https://www.googleapis.com/auth/spreadsheets']
+    SHEET_NAME = "riasec_responses"
+    RIASEC_ORDER = ['R', 'I', 'A', 'S', 'E', 'C']  # adjust if different
+    NEW_APTITUDES = ['apt1', 'apt2', 'apt3', 'apt4', 'apt5', 'apt6', 'apt7']  # adjust as needed
+
+    # Create credentials from dict instead of file
+    creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPE)
     client = gspread.authorize(creds)
 
     try:
@@ -313,9 +335,9 @@ def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=
 
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        user_info.get('name', 'Anonymous'),
-        user_info.get('occupation', ''),
-        user_info.get('education', ''),
+        user_info.get('name', 'Anonymous') if user_info else 'Anonymous',
+        user_info.get('occupation', '') if user_info else '',
+        user_info.get('education', '') if user_info else '',
         riasec_code
     ]
 
