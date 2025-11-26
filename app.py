@@ -16,7 +16,7 @@ from questions.tie_breaker_questions import TIE_BREAKER_QUESTIONS
 # -----------------------------
 # Google Sheets config
 # -----------------------------
-CREDS_FILE = "/project-aradhya-dengre-7a134824493f.json"
+CREDS_FILE = "project-aradhya-dengre-c63d9d2532a6.json"
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 SHEET_NAME = "R1"
 

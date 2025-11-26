@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "project-aradhya-dengre",
+  "private_key_id": "c63d9d2532a6ee5a775e79970129df5021ad01b5",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCCdh74eZaV2+F3\nP6Qc/Sxmit1TWflAXkgRfHnHSo5T8lnZvEwdWHpHJKLn0n10igLOFjlAyPbsQBa4\nEKYZbc8DD3VAx1UHM8El/xWg1a0tF6zL7CQaVrNL2mQ/8LTleA1GIEnGtXzzC/dh\n4z2gF9QcUZ51sRkGVnzto4/jpqNewVTJoTJaImFkE22U71Do+d1YhVyMRcAiwQZ/\nIPAjsss9OPHNDGzfgcVjVX3gFalxu67kXY0RUKhdGfp622LVwb0a+jOE5cLtW+kl\ni9MzEbH1u4ClvDAtq79s0Z1iuFMFfAW4DXYbONTrjPBc71lO6ddNMeTGZ16BR+UR\nomjFc5p7AgMBAAECggEAJv4vG40b2QazSPUYlCGHl86BgFwwB3EmkTNnIo3CJI0X\nFeEVzt+XDJSCrE9Zd++YDwjNa/Ok+c/d+n3fZ1JOwVdpcEcjvtdVL4oiaMP00rl0\nyC54S/cF9/H6bLIBH2TWctNLubyc7/fvpK5KyQLWPvCWMA8Sr7ZB+LUeWKiBw9wP\nv6zwBMOmT+ZCD5QwPwT37eYlK1ONfuMWL9oUWBJR5ULuGk5vuvB9W/nYZcFzF9xF\n0O60+F8Lmst/P+wY9Y9o7fFrzwfVFgxSHfsLwrnLeGFGsapFn23/4uq5d7MBJilQ\nsELAlZE1wh+LYzPmRYRgfMVC/XsApaCErPhYzXFQwQKBgQC4acWXjYTZQEtTQBfT\nJkt6IsZZuNhT0HrPhuN4HlWtLoARtn3vz+Qrt9FUuYkJNUQ1T+fqSPShf2l8vzDw\nH0wy2RBFix9ey5rrN4+bAnqaWu1gsMQmFsUDSdjz1yzF2W/dnBYSfloZQ5JDGNeo\nolSRzYhyvSrIXajI8GA4X+I32QKBgQC1GtflozdlEV9rO2fh4Y+cNOHxtky9RDRF\nC8nHCRfFxG0HpUP3oeIvBN4tO7/mAj0PSQRhFSdvwvzXSn6uSWeaFGbz+0uyGrr6\nWD+9DfZqpO/oZoBwbObZMMpkZ0I/ho8StRe8ywHR1I3rzjeqEZmIMGMi2l7aMgjj\nY9iRCIokcwKBgFd97z4A6Xd9Nn+P1/3YnFSc7QgiV5gkQC/3ajJSCgn5Fs/Qih1d\nv34yXsFYqThSKkM03u3boRyB65VAzEIQR0GUlFC6Oa7q4FwaZyp+2ZYj751BID6F\n7QCrZ6AAhYB0scstQ5eQlMSJt3nX7nFWWtM19TeiogqfzPVQfgYhD525AoGAPuL8\nVxQu9xxqOs0dDHWLrZ07W/iGey5EzDkEruV8aMMFbSM5D7MZ3GPfVmup/g+G7ljX\neXKkCA34SDXo+VIp9HnjKhN3vHfFt4qPT3GawHtXhyaYsPFP09k6XlTwzyhFZCSY\nAomnrxoU0e4ArECCRKUwt3iGeVPofDU+jVYeyfsCgYEAjythy6srlPSa6WwZA2um\n4R2VHzc9e8tARKNt7VArl95flbntlmW8GKCde6SG6xKAupWhDXH/PZf6HqwtU3Bu\nviFQyX4RPPm6d8P+rmMrRcQfiZEGBuAYfbXYNgjLiJcRO35cILgarQ4kqRpSuwfM\nltUdNUd8tVapShjT1MWqXlk=\n-----END PRIVATE KEY-----\n",
+  "client_email": "github-actions-deployer-401@project-aradhya-dengre.iam.gserviceaccount.com",
+  "client_id": "103365227137504939658",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/github-actions-deployer-401%40project-aradhya-dengre.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
