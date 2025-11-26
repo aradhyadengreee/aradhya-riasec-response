@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from collections import Counter
 import os
+import json
 import re
 import random
+import traceback
 from datetime import datetime
 
-# Google Sheets
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -16,29 +17,48 @@ from questions.tie_breaker_questions import TIE_BREAKER_QUESTIONS
 # -----------------------------
 # Google Sheets config
 # -----------------------------
-CREDS_FILE = "project-aradhya-dengre-c63d9d2532a6.json"
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 SHEET_NAME = "R1"
 
 # -----------------------------
-# App Initialization
+# Create App
 # -----------------------------
 def create_app():
     app = Flask(__name__)
     env = os.environ.get('FLASK_ENV', 'default')
     app.config.from_object(config[env])
 
-    # Use environment SECRET_KEY so session cookies stay valid across Cloud Run instances.
-    secret = os.environ.get('SECRET_KEY')
-    if secret:
-        app.secret_key = secret
-    else:
-        # Local fallback; change this before production if you care.
-        app.secret_key = 'dev-secret-local-only'
+    # SIMPLE STABLE SECRET KEY
+    app.secret_key = os.environ.get("SECRET_KEY", "123")
 
     return app
 
 app = create_app()
+
+# -----------------------------
+# Load Google SA Key From ENV
+# -----------------------------
+def get_gspread_client():
+    """
+    Loads the Google Service Account KEY from environment variable GCP_SA_KEY.
+    GCP_SA_KEY must contain FULL minified JSON (one line).
+    """
+    raw = os.environ.get("GCP_SA_KEY")
+    if not raw:
+        raise RuntimeError("ERROR: GCP_SA_KEY environment variable missing.")
+
+    try:
+        info = json.loads(raw)
+    except Exception as e:
+        raise RuntimeError(f"GCP_SA_KEY JSON parse failed: {e}")
+
+    try:
+        creds = Credentials.from_service_account_info(info, scopes=SCOPE)
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise RuntimeError(f"Failed to initialize Google credentials: {e}\n{tb}")
 
 # -----------------------------
 # Aptitudes & Mapping
@@ -118,12 +138,12 @@ def calculate_scores(use_text_enrichment=False):
         option = question['options'][selected]
         q_weight = question.get('weight', 1)
 
-        # RIASEC
+        # RIASEC scoring
         riasec_code = option.get('riasec')
         if riasec_code in riasec_scores:
             riasec_scores[riasec_code] += q_weight
 
-        # Aptitudes
+        # Aptitude scoring
         if qnum <= main_total:
             option_apts = option.get('aptitudes', {}) or {}
             for old_key, score in option_apts.items():
@@ -144,7 +164,7 @@ def calculate_scores(use_text_enrichment=False):
     return riasec_scores, dict(aptitude_scores)
 
 # -----------------------------
-# Tie-breaker Logic (FINAL)
+# Tie-breaker Logic
 # -----------------------------
 MAX_TIE_BREAKER_QS = 3
 RIASEC_ORDER = ['R','I','A','S','E','C']
@@ -156,26 +176,22 @@ def sort_pairs_resolver_style(pairs):
     return sorted(pairs, key=key_func)
 
 def identify_tie_pairs(riasec_scores):
-
     sorted_scores = sorted(
         riasec_scores.items(),
         key=lambda x: (-x[1], RIASEC_ORDER.index(x[0]))
     )
 
     pairs = set()
+    top1, score1 = sorted_scores[0]
+    top2, score2 = sorted_scores[1]
 
-    # Top-1 vs Top-2 (keep original rule)
-    top1_code, top1_score = sorted_scores[0]
-    top2_code, top2_score = sorted_scores[1]
+    if abs(score1 - score2) < 2:
+        pairs.add(f"{min(top1, top2)}-{max(top1, top2)}")
 
-    if abs(top1_score - top2_score) < 2:
-        pairs.add(f"{min(top1_code, top2_code)}-{max(top1_code, top2_code)}")
-
-    # NEW — Top-2 vs Top-3 ONLY
     if len(sorted_scores) >= 3:
-        top3_code, top3_score = sorted_scores[2]
-        if abs(top2_score - top3_score) < 2:
-            pairs.add(f"{min(top2_code, top3_code)}-{max(top2_code, top3_code)}")
+        top3, score3 = sorted_scores[2]
+        if abs(score2 - score3) < 2:
+            pairs.add(f"{min(top2, top3)}-{max(top2, top3)}")
 
     return pairs
 
@@ -187,6 +203,7 @@ def get_questions_for_pairs(pairs, already_asked):
         matched = [q for q in TIE_BREAKER_QUESTIONS if q.get('pair') == pair]
         new_qs.extend(matched[:MAX_TIE_BREAKER_QS])
     return new_qs
+
 
 # -----------------------------
 # Routes
@@ -215,7 +232,6 @@ def assessment():
     if 'user_info' not in session:
         return redirect(url_for('basic_info'))
 
-    # ---- MAIN PHASE ----
     if not session.get('tie_breaker_phase', False):
 
         if session['current_question'] <= len(session['shuffled_questions']):
@@ -228,24 +244,18 @@ def assessment():
                 current_question=session['current_question']
             )
 
-        # main finished — check tie-break needs
         riasec_scores,_ = calculate_scores()
         pairs_needed = identify_tie_pairs(riasec_scores)
 
         already = set(session.get('tie_breaker_pairs_asked', []))
-        remaining_pairs = pairs_needed - already
+        remaining = pairs_needed - already
 
-        if remaining_pairs:
+        if remaining:
             session['tie_breaker_phase'] = True
-
-            # FIX — SORT PAIRS ALWAYS
-            sorted_pairs = sort_pairs_resolver_style(remaining_pairs)
+            sorted_pairs = sort_pairs_resolver_style(remaining)
 
             session['tie_breaker_pairs_asked'].extend(sorted_pairs)
-
             new_qs = get_questions_for_pairs(sorted_pairs, already)
-            if not new_qs:
-                return redirect(url_for('submit_all_answers'))
 
             session['tie_breaker_questions'] = new_qs
             session['tie_breaker_answered'] = 0
@@ -255,150 +265,94 @@ def assessment():
 
         return redirect(url_for('submit_all_answers'))
 
-    # ---- TIE BREAKER PHASE ----
+    # TIE BREAKER
     tie_qs = session.get('tie_breaker_questions', [])
     answered = session.get('tie_breaker_answered', 0)
 
     if answered < len(tie_qs):
         q = tie_qs[answered]
-        display_index = len(session['shuffled_questions']) + answered + 1
+        display_idx = len(session['shuffled_questions']) + answered + 1
         return render_template(
             'assessment.html',
             question=q,
             phase="tie_breaker",
             total_questions=session.get('total_questions'),
-            current_question=display_index
+            current_question=display_idx
         )
 
     return redirect(url_for('submit_all_answers'))
 
 @app.route('/save_answer', methods=['POST'])
 def save_answer():
-    # Helpful logs — these appear in Cloud Run logs
-    app.logger.info("SAVE_ANSWER called. Session keys: %s", list(session.keys()) if session else [])
 
-    # If session expired / missing -> explicit error (frontend can handle)
     if 'current_question' not in session:
-        app.logger.warning("Session missing current_question")
-        return jsonify({'success': False, 'msg': 'Session expired or missing', 'redirect': url_for('basic_info')}), 401
+        return jsonify({'success': False, 'msg': 'Session missing'}), 401
 
-    try:
-        data = request.get_json(force=True)
-    except Exception as e:
-        app.logger.exception("Failed to parse JSON in save_answer")
-        return jsonify({'success': False, 'msg': 'Invalid JSON', 'error': str(e)}), 400
-
+    data = request.get_json(force=True)
     qnum = data.get('question_number')
     ans = data.get('answer')
 
-    app.logger.info("Received answer: q=%s ans=%s", qnum, ans)
-
     if qnum is None or ans is None:
-        app.logger.warning("Missing qnum or ans in payload")
-        return jsonify({'success': False, 'msg': 'Missing question_number or answer'}), 400
+        return jsonify({'success': False, 'msg': 'Missing question data'}), 400
 
-    # Ensure answers map exists
-    if 'answers' not in session:
-        session['answers'] = {}
     session['answers'][str(qnum)] = ans
-    session.modified = True
 
-    # advance counters
     if not session.get('tie_breaker_phase', False):
-        session['current_question'] = session.get('current_question', 1) + 1
+        session['current_question'] += 1
     else:
-        session['tie_breaker_answered'] = session.get('tie_breaker_answered', 0) + 1
+        session['tie_breaker_answered'] += 1
         session['current_question'] = (
-            len(session.get('shuffled_questions', [])) +
+            len(session['shuffled_questions']) +
             session['tie_breaker_answered'] + 1
         )
 
-    # recalc and store scores
     riasec_scores, _ = calculate_scores()
     session['riasec_scores'] = riasec_scores
-    session.modified = True
 
-    response_payload = {
-        'success': True,
-        'redirect': url_for('assessment'),
-        'debug': {  # temporary debug — remove later
-            'current_question': session.get('current_question'),
-            'answers_count': len(session.get('answers', {})),
-            'riasec_scores': riasec_scores
-        }
-    }
-    app.logger.info("save_answer success. Debug: %s", response_payload['debug'])
-    return jsonify(response_payload)
-
-@app.route('/get_live_scores')
-def get_live_scores():
-    # frontend was calling this and got 404; return a sensible JSON
-    if 'riasec_scores' not in session:
-        return jsonify({'success': False, 'msg': 'No scores yet'}), 404
-
-    return jsonify({
-        'success': True,
-        'riasec_scores': session.get('riasec_scores', {}),
-        'current_question': session.get('current_question'),
-        'answers_count': len(session.get('answers', {}))
-    })
+    return jsonify({'success': True, 'redirect': url_for('assessment')})
 
 @app.route('/submit_all_answers')
 def submit_all_answers():
-    if 'answers' not in session or not session['answers']:
+    if not session.get('answers'):
         return redirect(url_for('basic_info'))
     return redirect(url_for('results'))
 
+
 # -----------------------------
-# RIASEC Resolver (unchanged)
+# RIASEC Resolver
 # -----------------------------
 def resolve_riasec_code(riasec_scores):
-
-    # Stable sorted list
     sorted_scores = sorted(
         riasec_scores.items(),
         key=lambda x: (-x[1], RIASEC_ORDER.index(x[0]))
     )
-
-    # Just take first 3 after sorting
     top3 = [code for code, score in sorted_scores[:3]]
-
     return ''.join(top3)
 
 
 # -----------------------------
-# Google Sheets Saving
+# SAVE RESULTS (Google Sheet)
 # -----------------------------
 def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=None):
-    if not os.path.exists(CREDS_FILE):
-        raise FileNotFoundError(f"{CREDS_FILE} not found")
 
-    creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPE)
-    client = gspread.authorize(creds)
+    client = get_gspread_client()
 
     try:
         sheet = client.open(SHEET_NAME).sheet1
     except Exception as e:
-        print("Error opening sheet:", e)
-        raise
+        raise RuntimeError(f"Failed to open Google Sheet: {e}")
 
-    # ----------- BUILD ROW ACCORDING TO YOUR SHEET -----------
     row = []
-
-    # A-D Basic info
     row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     row.append(user_info.get('name', 'Anonymous'))
     row.append(user_info.get('occupation', ''))
     row.append(user_info.get('education', ''))
 
-    # E Final RIASEC Code
     row.append(riasec_code)
 
-    # F-K R, I, A, S, E, C scores
-    for code in RIASEC_ORDER:   # ['R','I','A','S','E','C']
+    for code in RIASEC_ORDER:
         row.append(riasec_scores.get(code, 0))
 
-    # L-W 12 aptitude scores (same order every time)
     ordered_apts = [
         "Logical Reasoning", "Mechanical", "Creative", "Verbal Communication",
         "Numerical", "Social/Helping", "Leadership/Persuasion", "Digital/Computer",
@@ -408,24 +362,15 @@ def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=
     for apt in ordered_apts:
         row.append(aptitude_scores.get(apt, 0))
 
-    # ---------------------------------------------------------
-
-    # FINAL SAFETY CHECK
-    if len(row) != 23:
-        print("ERROR: Expected 23 columns but got", len(row))
-        print("ROW CONTENT:", row)
-
-    # Save in Google Sheet
     sheet.append_row(row)
     return True
-
 
 # -----------------------------
 # Results Page
 # -----------------------------
 @app.route('/results')
 def results():
-    if 'answers' not in session or not session['answers']:
+    if not session.get('answers'):
         return redirect(url_for('index'))
 
     riasec_scores, aptitude_scores = calculate_scores()
@@ -451,9 +396,6 @@ def results():
 
 @app.route('/save_results', methods=['POST'])
 def save_results():
-    if 'last_riasec_code' not in session:
-        return redirect(url_for('results'))
-
     try:
         save_to_google_sheet(
             session['last_riasec_code'],
@@ -461,9 +403,7 @@ def save_results():
             session['last_aptitude_scores'],
             session.get('user_info')
         )
-        return jsonify({'success': True, 'msg': 'Results saved successfully!'})
-    except FileNotFoundError:
-        return jsonify({'success': False, 'msg': 'Service account file missing. Results not saved.'})
+        return jsonify({'success': True, 'msg': 'Saved successfully'})
     except Exception as e:
         return jsonify({'success': False, 'msg': str(e)})
 
