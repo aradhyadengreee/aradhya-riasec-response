@@ -1,8 +1,9 @@
 # app.py
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
-from collections import defaultdict, Counter
+from collections import Counter
 import os
 import re
+import random
 
 from config import config
 from questions.main_questions import QUESTIONS
@@ -20,7 +21,7 @@ def create_app():
 app = create_app()
 
 # -----------------------------
-# New aptitude set (target)
+# New aptitude set
 # -----------------------------
 NEW_APTITUDES = [
     "Logical Reasoning", "Mechanical", "Creative", "Verbal Communication",
@@ -75,7 +76,7 @@ def enrich_from_text(text):
     return boosts
 
 # -----------------------------
-# FIXED: Score Calculation
+# Score Calculation
 # -----------------------------
 def calculate_scores(use_text_enrichment=False):
     """
@@ -106,16 +107,12 @@ def calculate_scores(use_text_enrichment=False):
 
         option = question['options'][selected]
 
-        # -------------------------
-        # ALWAYS add RIASEC points
-        # -------------------------
+        # Add RIASEC points always
         riasec_code = option.get('riasec')
         if riasec_code in riasec_scores:
             riasec_scores[riasec_code] += 1
 
-        # ----------------------------------------------------
-        # Aptitudes ONLY for main questions (no tie-breakers)
-        # ----------------------------------------------------
+        # Aptitudes only from main questions
         if qnum <= main_total:
             option_apts = option.get('aptitudes', {}) or {}
             for old_key, score in option_apts.items():
@@ -126,7 +123,6 @@ def calculate_scores(use_text_enrichment=False):
                     if old_key in NEW_APTITUDES:
                         aptitude_scores[old_key] += int(score)
 
-            # Optional text enrichment (main questions only)
             if use_text_enrichment:
                 for field in ('explain','hint','job_text'):
                     if field in question:
@@ -137,7 +133,7 @@ def calculate_scores(use_text_enrichment=False):
     return riasec_scores, dict(aptitude_scores)
 
 # -----------------------------
-# Tie-breaker logic (unchanged)
+# Tie-breaker logic
 # -----------------------------
 def identify_tie_pairs(riasec_scores, delta):
     sorted_by_score = sorted(riasec_scores.items(), key=lambda x: x[1], reverse=True)
@@ -151,6 +147,7 @@ def identify_tie_pairs(riasec_scores, delta):
     first_score, second_score, third_score = scores[0], scores[1], scores[2]
     first_code, second_code, third_code = codes_order[0], codes_order[1], codes_order[2]
 
+    # Trigger tie-breaker only if difference < delta (strict)
     if (first_score - second_score) < delta:
         pairs.add(f"{min(first_code,second_code)}-{max(first_code,second_code)}")
 
@@ -182,7 +179,7 @@ def needs_tie_breaker(riasec_scores):
     return len(pairs) > 0
 
 # -----------------------------
-# Routes (fixed rendering for tie-breaker display index)
+# Routes
 # -----------------------------
 @app.route('/')
 def index():
@@ -202,29 +199,24 @@ def assessment():
     if not session.get('tie_breaker_phase', False):
         if session['current_question'] <= len(QUESTIONS):
             q = QUESTIONS[session['current_question'] - 1]
-            # main questions: display index and total are both plain main counts
             return render_template('assessment.html', question=q, phase="main",
                                    total_questions=len(QUESTIONS),
                                    current_question=session['current_question'])
         else:
-            # main finished; evaluate tie-breakers
             riasec_scores,_ = calculate_scores()
             delta = app.config.get('TIE_BREAKER_DELTA', 1)
             pairs_needed = identify_tie_pairs(riasec_scores, delta)
             if pairs_needed:
-                # Enter tie-breaker phase
                 session['tie_breaker_phase'] = True
                 already = set(session.get('tie_breaker_pairs_asked', []))
                 new_qs = get_questions_for_pairs(pairs_needed, already)
                 if not new_qs:
                     return redirect(url_for('submit_all_answers'))
 
-                # assign tie questions and mark those pairs as asked
                 session['tie_breaker_questions'] = new_qs
                 to_mark = [p for p in pairs_needed if p not in already]
                 session['tie_breaker_pairs_asked'] = list(set(session.get('tie_breaker_pairs_asked', [])) | set(to_mark))
                 session['tie_breaker_answered'] = 0
-                # total_questions is the COUNT of questions the user will answer (main + assigned tie-breakers)
                 session['total_questions'] = len(QUESTIONS) + len(session['tie_breaker_questions'])
                 return redirect(url_for('assessment'))
             else:
@@ -235,17 +227,14 @@ def assessment():
     answered = session.get('tie_breaker_answered', 0)
     if answered < len(tie_qs):
         q = tie_qs[answered]
-        # IMPORTANT: display_index must be the sequence position (main_count + index within tie-breakers)
         display_index = len(QUESTIONS) + answered + 1
         return render_template('assessment.html', question=q, phase="tie_breaker",
                                total_questions=session.get('total_questions'),
                                current_question=display_index)
     else:
-        # all assigned tie-breakers answered; check if further pairs need resolution
         riasec_scores,_ = calculate_scores()
         delta = app.config.get('TIE_BREAKER_DELTA', 1)
         pairs_needed = identify_tie_pairs(riasec_scores, delta)
-
         already = set(session.get('tie_breaker_pairs_asked', []))
         remaining = set(pairs_needed) - already
 
@@ -288,7 +277,6 @@ def save_answer():
         session['current_question'] = session.get('current_question', 1) + 1
     else:
         session['tie_breaker_answered'] = session.get('tie_breaker_answered', 0) + 1
-        # update session current_question as sequence index (not the question.id)
         session['current_question'] = len(QUESTIONS) + session['tie_breaker_answered'] + 1
 
     return jsonify({'success': True, 'redirect': url_for('assessment')})
@@ -299,10 +287,26 @@ def submit_all_answers():
         return redirect(url_for('index'))
     return redirect(url_for('results'))
 
+# -----------------------------
+# Fixed RIASEC Code Resolver
+# -----------------------------
 def resolve_riasec_code(riasec_scores):
-    ordered = sorted(riasec_scores.items(), key=lambda x: (-x[1], x[0]))
-    top3 = ordered[:3]
-    return ''.join([c for c,_ in top3])
+    """
+    Returns the 3-letter RIASEC code.
+    Randomizes tied top scores after tie-breakers.
+    """
+    # Sort all scores descending
+    sorted_scores = sorted(riasec_scores.items(), key=lambda x: -x[1])
+    top_score = sorted_scores[0][1]
+
+    # Find all codes tied at top score
+    tied_top = [c for c, s in sorted_scores if s == top_score]
+    random.shuffle(tied_top)  # randomize tied top types
+
+    riasec_code = tied_top[:1]  # first top type
+    remaining = [c for c, _ in sorted_scores if c not in riasec_code]
+    riasec_code += remaining[:2]  # fill next two
+    return ''.join(riasec_code)
 
 @app.route('/results')
 def results():
