@@ -3,376 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Assessment Results - RIASEC Career Assessment</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Assessment Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #4361ee;
-            --primary-dark: #3a56d4;
             --secondary: #7209b7;
-            --accent: #f72585;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --success: #4cc9f0;
             --gradient: linear-gradient(135deg, #4361ee 0%, #7209b7 100%);
+            --light-bg: #f7f9fc;
+            --card-bg: #ffffff;
             --shadow: 0 10px 30px rgba(0,0,0,0.1);
             --radius: 16px;
         }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: var(--dark);
+            background: var(--light-bg);
+            display: flex;
+            justify-content: center;
             padding: 40px 20px;
         }
-        
+
         .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        
-        .results-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            max-width: 700px;
+            width: 100%;
+            background: var(--card-bg);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 30px 40px;
         }
-        
-        .results-header {
-            background: var(--gradient);
-            color: white;
-            padding: 40px 30px;
+
+        h2 {
             text-align: center;
+            font-size: 2rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
         }
-        
-        .results-title {
-            font-size: 2.5rem;
-            font-weight: 700;
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        .bar-container {
+            background: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+            height: 28px;
+            margin-top: 5px;
+            width: 100%;
+        }
+
+        .bar-fill {
+            height: 100%;
+            color: white;
+            font-weight: bold;
+            line-height: 28px;
+            padding-right: 10px;
+            text-align: right;
+            border-radius: 20px;
+        }
+
+        /* Color gradient per bar dynamically */
+        .bar-R { background: linear-gradient(90deg, #ff6b6b, #ff8787); }
+        .bar-I { background: linear-gradient(90deg, #6bafff, #87c5ff); }
+        .bar-A { background: linear-gradient(90deg, #ffde6b, #ffe987); }
+        .bar-S { background: linear-gradient(90deg, #6bff8a, #87ffac); }
+        .bar-E { background: linear-gradient(90deg, #ff6bde, #ff87ef); }
+        .bar-C { background: linear-gradient(90deg, #6bfff6, #87fff7); }
+
+        .flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
         }
-        
-        .results-subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        
-        .results-content {
-            padding: 40px 30px;
-        }
-        
-        .section {
-            margin-bottom: 50px;
-        }
-        
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 25px;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 24px;
-            background: var(--gradient);
-            border-radius: 2px;
-        }
-        
-        .riasec-code-display {
-            text-align: center;
-            margin: 30px 0;
-        }
-        
-        .code-letter {
-            display: inline-block;
-            width: 80px;
-            height: 80px;
-            margin: 0 10px;
-            background: var(--gradient);
-            border-radius: 20px;
-            color: white;
-            font-size: 2.5rem;
-            font-weight: 700;
-            line-height: 80px;
-            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        .code-letter:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        
-        .code-letter:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .score-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        
-        .score-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            border-left: 4px solid var(--primary);
-        }
-        
-        .score-card.top-three {
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-            border-left-color: var(--accent);
-        }
-        
-        .score-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .score-label {
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: var(--dark);
-        }
-        
-        .score-value {
-            font-weight: 700;
-            font-size: 1.3rem;
-            color: var(--primary);
-        }
-        
-        .score-bar {
-            height: 12px;
-            background: #e9ecef;
-            border-radius: 6px;
-            overflow: hidden;
-            margin: 15px 0;
-        }
-        
-        .score-fill {
-            height: 100%;
-            background: var(--gradient);
-            border-radius: 6px;
-            transition: width 1s ease;
-        }
-        
-        .riasec-description {
-            text-align: center;
-            margin: 30px 0;
-            color: #666;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 40px;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 15px 30px;
+
+        button {
+            width: 100%;
+            padding: 15px;
             border: none;
             border-radius: 50px;
+            font-size: 1.1rem;
             font-weight: 600;
-            font-size: 1rem;
+            color: white;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-primary {
             background: var(--gradient);
-            color: white;
-            box-shadow: 0 5px 20px rgba(67, 97, 238, 0.3);
+            transition: all 0.3s ease;
         }
-        
-        .btn-primary:hover {
+
+        button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(67, 97, 238, 0.4);
+            box-shadow: 0 10px 30px rgba(67,97,238,0.4);
+            background: linear-gradient(135deg, #3a56d4 0%, #6309a3 100%);
         }
-        
-        .btn-secondary {
-            background: white;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-        
-        .btn-secondary:hover {
-            background: var(--primary);
-            color: white;
-        }
-        
-        @media (max-width: 768px) {
-            .results-title {
-                font-size: 2rem;
-            }
-            
-            .score-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .code-letter {
-                width: 60px;
-                height: 60px;
-                line-height: 60px;
-                font-size: 2rem;
-                margin: 0 5px;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .btn {
-                width: 100%;
-                max-width: 300px;
-                justify-content: center;
-            }
+
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            h2 { font-size: 1.8rem; }
+            .bar-container { height: 24px; }
+            .bar-fill { line-height: 24px; padding-right: 6px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="results-card">
-            <div class="results-header">
-                <h1 class="results-title">Your Career Personality Results</h1>
-                <p class="results-subtitle">Discover your dominant RIASEC types and aptitudes</p>
-            </div>
-            
-            <div class="results-content">
-                <!-- RIASEC Code Section -->
-                <div class="section">
-                    <h2 class="section-title">Your RIASEC Code</h2>
-                    <div class="riasec-code-display">
-                        {% for letter in riasec_code %}
-                        <div class="code-letter">{{ letter }}</div>
-                        {% endfor %}
-                    </div>
-                    <p class="riasec-description">
-                        This three-letter code represents your dominant personality types in the RIASEC model. 
-                        Your strongest types are listed first, helping identify careers that match your natural preferences.
-                    </p>
-                </div>
+        <h2>Assessment Results</h2>
 
-                <!-- Top 3 RIASEC Types -->
-                <div class="section">
-                    <h2 class="section-title">Top 3 RIASEC Types</h2>
-                    <div class="score-grid">
-                        {% for code, score in top_riasec %}
-                        <div class="score-card top-three">
-                            <div class="score-header">
-                                <span class="score-label">{{ code }}</span>
-                                <span class="score-value">{{ score }} points</span>
-                            </div>
-                            <div class="score-bar">
-                                <div class="score-fill" style="width: {{ (score / max_riasec_score) * 100 }}%"></div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <h3 style="margin: 30px 0 20px 0; color: #495057;">All RIASEC Scores</h3>
-                    <div class="score-grid">
-                        {% for code, score in all_riasec_scores.items() %}
-                        <div class="score-card">
-                            <div class="score-header">
-                                <span class="score-label">{{ code }}</span>
-                                <span class="score-value">{{ score }} points</span>
-                            </div>
-                            <div class="score-bar">
-                                <div class="score-fill" style="width: {{ (score / max_riasec_score) * 100 }}%"></div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Top 3 Aptitudes -->
-                <div class="section">
-                    <h2 class="section-title">Top 3 Aptitudes</h2>
-                    <div class="score-grid">
-                        {% for aptitude, score in top_aptitudes %}
-                        <div class="score-card top-three">
-                            <div class="score-header">
-                                <span class="score-label">{{ aptitude }}</span>
-                                <span class="score-value">{{ score }} points</span>
-                            </div>
-                            <div class="score-bar">
-                                <div class="score-fill" style="width: {{ (score / max_aptitude_score) * 100 }}%"></div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <h3 style="margin: 30px 0 20px 0; color: #495057;">All Aptitude Scores</h3>
-                    <div class="score-grid">
-                        {% for aptitude, score in all_aptitude_scores.items() %}
-                        <div class="score-card">
-                            <div class="score-header">
-                                <span class="score-label">{{ aptitude }}</span>
-                                <span class="score-value">{{ score }} points</span>
-                            </div>
-                            <div class="score-bar">
-                                <div class="score-fill" style="width: {{ (score / max_aptitude_score) * 100 }}%"></div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons">
-                    <a href="/restart" class="btn btn-primary">
-                        <span>Take Assessment Again</span>
-                    </a>
-                    <button onclick="window.print()" class="btn btn-secondary">
-                        <span>Print Results</span>
-                    </button>
+        <div class="section">
+            <h3>Top RIASEC Codes: {{ riasec_code }}</h3>
+            {% for code, score in all_riasec_scores.items() %}
+            <div class="flex">
+                <span>{{ code }} ({{ score }})</span>
+                <div class="bar-container">
+                    <div class="bar-fill bar-{{ code }}" style="width: {{ (score / max_riasec_score * 100) if max_riasec_score else 0 }}%">{{ score }}</div>
                 </div>
             </div>
+            {% endfor %}
         </div>
+
+        <div class="section">
+            <h3>Top Aptitudes:</h3>
+            {% for apt, score in all_aptitude_scores.items() %}
+            <div class="flex">
+                <span>{{ apt }} ({{ score }})</span>
+                <div class="bar-container">
+                    <div class="bar-fill" style="width: {{ (score / max_aptitude_score * 100) if max_aptitude_score else 0 }}%; background: linear-gradient(90deg, #4CAF50, #81C784)">{{ score }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button id="saveBtn">Save Results</button>
     </div>
 
     <script>
-        // Animate score bars on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const scoreFills = document.querySelectorAll('.score-fill');
-            scoreFills.forEach(fill => {
-                const width = fill.style.width;
-                fill.style.width = '0';
-                setTimeout(() => {
-                    fill.style.width = width;
-                }, 100);
-            });
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            fetch('{{ url_for("save_results") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.msg);
+            })
+            .catch(err => alert('Error saving results.'));
         });
     </script>
 </body>

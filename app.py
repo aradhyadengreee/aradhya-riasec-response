@@ -1,13 +1,24 @@
-# app.py
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from collections import Counter
 import os
 import re
 import random
+from datetime import datetime
+
+# Google Sheets
+import gspread
+from google.oauth2.service_account import Credentials
 
 from config import config
 from questions.main_questions import QUESTIONS
 from questions.tie_breaker_questions import TIE_BREAKER_QUESTIONS
+
+# -----------------------------
+# Google Sheets config
+# -----------------------------
+CREDS_FILE = "/home/gaurav-trscholar/Downloads/riasec_app_tiebreaker/riasec-responses-ddd055de2197.json"
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+SHEET_NAME = "R1"
 
 # -----------------------------
 # App Initialization
@@ -16,12 +27,13 @@ def create_app():
     app = Flask(__name__)
     env = os.environ.get('FLASK_ENV', 'default')
     app.config.from_object(config[env])
+    app.secret_key = os.urandom(24)
     return app
 
 app = create_app()
 
 # -----------------------------
-# New aptitude set
+# Aptitudes & Mapping
 # -----------------------------
 NEW_APTITUDES = [
     "Logical Reasoning", "Mechanical", "Creative", "Verbal Communication",
@@ -59,10 +71,11 @@ def initialize_session():
     session['tie_breaker_questions'] = []
     session['tie_breaker_pairs_asked'] = []
     session['tie_breaker_answered'] = 0
+    session['shuffled_questions'] = random.sample(QUESTIONS, len(QUESTIONS))
     session['total_questions'] = len(QUESTIONS)
 
 # -----------------------------
-# Utilities: text enrichment
+# Score Calculation
 # -----------------------------
 def enrich_from_text(text):
     boosts = Counter()
@@ -75,15 +88,7 @@ def enrich_from_text(text):
                 boosts[a] += 1
     return boosts
 
-# -----------------------------
-# Score Calculation
-# -----------------------------
 def calculate_scores(use_text_enrichment=False):
-    """
-    Returns (riasec_scores, aptitude_scores)
-    Tie-breaker questions ALWAYS update RIASEC.
-    Aptitudes ONLY from main questions.
-    """
     riasec_scores = {'R':0,'I':0,'A':0,'S':0,'E':0,'C':0}
     aptitude_scores = Counter({a: 0 for a in NEW_APTITUDES})
     main_total = len(QUESTIONS)
@@ -94,34 +99,32 @@ def calculate_scores(use_text_enrichment=False):
         except:
             continue
 
-        # Identify question
         if qnum <= main_total:
             question = next((q for q in QUESTIONS if q['number'] == qnum), None)
         else:
             question = next((q for q in TIE_BREAKER_QUESTIONS if q['number'] == qnum), None)
 
-        if not question:
-            continue
-        if selected not in question.get('options', {}):
+        if not question or selected not in question.get('options', {}):
             continue
 
         option = question['options'][selected]
+        q_weight = question.get('weight', 1)
 
-        # Add RIASEC points always
+        # RIASEC
         riasec_code = option.get('riasec')
         if riasec_code in riasec_scores:
-            riasec_scores[riasec_code] += 1
+            riasec_scores[riasec_code] += q_weight
 
-        # Aptitudes only from main questions
+        # Aptitudes
         if qnum <= main_total:
             option_apts = option.get('aptitudes', {}) or {}
             for old_key, score in option_apts.items():
                 if old_key in OLD_TO_NEW_APT_MAP:
                     for new_key in OLD_TO_NEW_APT_MAP[old_key]:
-                        aptitude_scores[new_key] += int(score)
+                        aptitude_scores[new_key] += int(score) * q_weight
                 else:
                     if old_key in NEW_APTITUDES:
-                        aptitude_scores[old_key] += int(score)
+                        aptitude_scores[old_key] += int(score) * q_weight
 
             if use_text_enrichment:
                 for field in ('explain','hint','job_text'):
@@ -133,33 +136,38 @@ def calculate_scores(use_text_enrichment=False):
     return riasec_scores, dict(aptitude_scores)
 
 # -----------------------------
-# Tie-breaker logic
+# Tie-breaker Logic (FINAL)
 # -----------------------------
-def identify_tie_pairs(riasec_scores, delta):
-    sorted_by_score = sorted(riasec_scores.items(), key=lambda x: x[1], reverse=True)
-    if len(sorted_by_score) < 3:
-        return set()
+MAX_TIE_BREAKER_QS = 3
+RIASEC_ORDER = ['R','I','A','S','E','C']
 
-    codes_order = [c for c,_ in sorted_by_score]
-    scores = [s for _,s in sorted_by_score]
+def sort_pairs_resolver_style(pairs):
+    def key_func(pair):
+        a, b = pair.split('-')
+        return (RIASEC_ORDER.index(a), RIASEC_ORDER.index(b))
+    return sorted(pairs, key=key_func)
+
+def identify_tie_pairs(riasec_scores):
+
+    sorted_scores = sorted(
+        riasec_scores.items(),
+        key=lambda x: (-x[1], RIASEC_ORDER.index(x[0]))
+    )
 
     pairs = set()
-    first_score, second_score, third_score = scores[0], scores[1], scores[2]
-    first_code, second_code, third_code = codes_order[0], codes_order[1], codes_order[2]
 
-    # Trigger tie-breaker only if difference < delta (strict)
-    if (first_score - second_score) < delta:
-        pairs.add(f"{min(first_code,second_code)}-{max(first_code,second_code)}")
+    # Top-1 vs Top-2 (keep original rule)
+    top1_code, top1_score = sorted_scores[0]
+    top2_code, top2_score = sorted_scores[1]
 
-    if (second_score - third_score) < delta:
-        pairs.add(f"{min(second_code,third_code)}-{max(second_code,third_code)}")
+    if abs(top1_score - top2_score) < 2:
+        pairs.add(f"{min(top1_code, top2_code)}-{max(top1_code, top2_code)}")
 
-    third_place_codes = [c for c,s in sorted_by_score if s == third_score]
-    if len(third_place_codes) > 1:
-        for i in range(len(third_place_codes)):
-            for j in range(i+1, len(third_place_codes)):
-                a,b = sorted([third_place_codes[i], third_place_codes[j]])
-                pairs.add(f"{a}-{b}")
+    # NEW — Top-2 vs Top-3 ONLY
+    if len(sorted_scores) >= 3:
+        top3_code, top3_score = sorted_scores[2]
+        if abs(top2_score - top3_score) < 2:
+            pairs.add(f"{min(top2_code, top3_code)}-{max(top2_code, top3_code)}")
 
     return pairs
 
@@ -169,178 +177,251 @@ def get_questions_for_pairs(pairs, already_asked):
         if pair in already_asked:
             continue
         matched = [q for q in TIE_BREAKER_QUESTIONS if q.get('pair') == pair]
-        if matched:
-            new_qs.extend(matched[:2])
+        new_qs.extend(matched[:MAX_TIE_BREAKER_QS])
     return new_qs
-
-def needs_tie_breaker(riasec_scores):
-    delta = app.config.get('TIE_BREAKER_DELTA', 1)
-    pairs = identify_tie_pairs(riasec_scores, delta)
-    return len(pairs) > 0
 
 # -----------------------------
 # Routes
 # -----------------------------
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return redirect(url_for('basic_info'))
 
-@app.route('/start', methods=['POST'])
-def start_assessment():
+@app.route('/basic_info')
+def basic_info():
+    return render_template('basic_info.html')
+
+@app.route('/save_basic_info', methods=['POST'])
+def save_basic_info():
+    session['user_info'] = {
+        'name': request.form.get('name', 'Anonymous'),
+        'occupation': request.form.get('occupation', ''),
+        'education': request.form.get('education', '')
+    }
     initialize_session()
     return redirect(url_for('assessment'))
 
 @app.route('/assessment')
 def assessment():
-    if 'current_question' not in session:
-        return redirect(url_for('index'))
 
-    # MAIN PHASE
+    if 'user_info' not in session:
+        return redirect(url_for('basic_info'))
+
+    # ---- MAIN PHASE ----
     if not session.get('tie_breaker_phase', False):
-        if session['current_question'] <= len(QUESTIONS):
-            q = QUESTIONS[session['current_question'] - 1]
-            return render_template('assessment.html', question=q, phase="main",
-                                   total_questions=len(QUESTIONS),
-                                   current_question=session['current_question'])
-        else:
-            riasec_scores,_ = calculate_scores()
-            delta = app.config.get('TIE_BREAKER_DELTA', 1)
-            pairs_needed = identify_tie_pairs(riasec_scores, delta)
-            if pairs_needed:
-                session['tie_breaker_phase'] = True
-                already = set(session.get('tie_breaker_pairs_asked', []))
-                new_qs = get_questions_for_pairs(pairs_needed, already)
-                if not new_qs:
-                    return redirect(url_for('submit_all_answers'))
 
-                session['tie_breaker_questions'] = new_qs
-                to_mark = [p for p in pairs_needed if p not in already]
-                session['tie_breaker_pairs_asked'] = list(set(session.get('tie_breaker_pairs_asked', [])) | set(to_mark))
-                session['tie_breaker_answered'] = 0
-                session['total_questions'] = len(QUESTIONS) + len(session['tie_breaker_questions'])
-                return redirect(url_for('assessment'))
-            else:
-                return redirect(url_for('submit_all_answers'))
+        if session['current_question'] <= len(session['shuffled_questions']):
+            q = session['shuffled_questions'][session['current_question'] - 1]
+            return render_template(
+                'assessment.html',
+                question=q,
+                phase="main",
+                total_questions=len(session['shuffled_questions']),
+                current_question=session['current_question']
+            )
 
-    # TIE-BREAKER PHASE
-    tie_qs = session.get('tie_breaker_questions', [])
-    answered = session.get('tie_breaker_answered', 0)
-    if answered < len(tie_qs):
-        q = tie_qs[answered]
-        display_index = len(QUESTIONS) + answered + 1
-        return render_template('assessment.html', question=q, phase="tie_breaker",
-                               total_questions=session.get('total_questions'),
-                               current_question=display_index)
-    else:
+        # main finished — check tie-break needs
         riasec_scores,_ = calculate_scores()
-        delta = app.config.get('TIE_BREAKER_DELTA', 1)
-        pairs_needed = identify_tie_pairs(riasec_scores, delta)
-        already = set(session.get('tie_breaker_pairs_asked', []))
-        remaining = set(pairs_needed) - already
+        pairs_needed = identify_tie_pairs(riasec_scores)
 
-        if remaining:
-            new_qs = get_questions_for_pairs(remaining, already)
+        already = set(session.get('tie_breaker_pairs_asked', []))
+        remaining_pairs = pairs_needed - already
+
+        if remaining_pairs:
+            session['tie_breaker_phase'] = True
+
+            # FIX — SORT PAIRS ALWAYS
+            sorted_pairs = sort_pairs_resolver_style(remaining_pairs)
+
+            session['tie_breaker_pairs_asked'].extend(sorted_pairs)
+
+            new_qs = get_questions_for_pairs(sorted_pairs, already)
             if not new_qs:
                 return redirect(url_for('submit_all_answers'))
-            session['tie_breaker_questions'].extend(new_qs)
-            to_mark = [p for p in remaining if p not in already]
-            session['tie_breaker_pairs_asked'] = list(already | set(to_mark))
-            session['total_questions'] += len(new_qs)
+
+            session['tie_breaker_questions'] = new_qs
+            session['tie_breaker_answered'] = 0
+            session['total_questions'] = len(session['shuffled_questions']) + len(new_qs)
+
             return redirect(url_for('assessment'))
-        else:
-            return redirect(url_for('submit_all_answers'))
+
+        return redirect(url_for('submit_all_answers'))
+
+    # ---- TIE BREAKER PHASE ----
+    tie_qs = session.get('tie_breaker_questions', [])
+    answered = session.get('tie_breaker_answered', 0)
+
+    if answered < len(tie_qs):
+        q = tie_qs[answered]
+        display_index = len(session['shuffled_questions']) + answered + 1
+        return render_template(
+            'assessment.html',
+            question=q,
+            phase="tie_breaker",
+            total_questions=session.get('total_questions'),
+            current_question=display_index
+        )
+
+    return redirect(url_for('submit_all_answers'))
 
 @app.route('/save_answer', methods=['POST'])
 def save_answer():
+
     if 'current_question' not in session:
-        return jsonify({'success': False, 'redirect': url_for('index')})
+        return jsonify({'success': False, 'redirect': url_for('basic_info')})
 
     data = request.get_json(force=True)
     qnum = data.get('question_number')
     ans = data.get('answer')
 
-    if qnum is None or ans is None:
-        return jsonify({'success': False, 'msg': 'missing payload'})
-
     session['answers'][str(qnum)] = ans
     session.modified = True
 
-    main_total = len(QUESTIONS)
-    if qnum > main_total:
-        qobj = next((q for q in TIE_BREAKER_QUESTIONS if q['number'] == qnum), None)
-        if qobj:
-            pair = qobj.get('pair')
-            if pair and pair not in session.get('tie_breaker_pairs_asked', []):
-                session['tie_breaker_pairs_asked'].append(pair)
-
     if not session.get('tie_breaker_phase', False):
-        session['current_question'] = session.get('current_question', 1) + 1
+        session['current_question'] += 1
     else:
-        session['tie_breaker_answered'] = session.get('tie_breaker_answered', 0) + 1
-        session['current_question'] = len(QUESTIONS) + session['tie_breaker_answered'] + 1
+        session['tie_breaker_answered'] += 1
+        session['current_question'] = (
+            len(session['shuffled_questions']) +
+            session['tie_breaker_answered'] + 1
+        )
+
+    riasec_scores, _ = calculate_scores()
+    session['riasec_scores'] = riasec_scores
 
     return jsonify({'success': True, 'redirect': url_for('assessment')})
 
 @app.route('/submit_all_answers')
 def submit_all_answers():
     if 'answers' not in session or not session['answers']:
-        return redirect(url_for('index'))
+        return redirect(url_for('basic_info'))
     return redirect(url_for('results'))
 
 # -----------------------------
-# Fixed RIASEC Code Resolver
+# RIASEC Resolver (unchanged)
 # -----------------------------
 def resolve_riasec_code(riasec_scores):
-    """
-    Returns the 3-letter RIASEC code.
-    Randomizes tied top scores after tie-breakers.
-    """
-    # Sort all scores descending
-    sorted_scores = sorted(riasec_scores.items(), key=lambda x: -x[1])
-    top_score = sorted_scores[0][1]
 
-    # Find all codes tied at top score
-    tied_top = [c for c, s in sorted_scores if s == top_score]
-    random.shuffle(tied_top)  # randomize tied top types
+    # Stable sorted list
+    sorted_scores = sorted(
+        riasec_scores.items(),
+        key=lambda x: (-x[1], RIASEC_ORDER.index(x[0]))
+    )
 
-    riasec_code = tied_top[:1]  # first top type
-    remaining = [c for c, _ in sorted_scores if c not in riasec_code]
-    riasec_code += remaining[:2]  # fill next two
-    return ''.join(riasec_code)
+    # Just take first 3 after sorting
+    top3 = [code for code, score in sorted_scores[:3]]
 
+    return ''.join(top3)
+
+
+# -----------------------------
+# Google Sheets Saving
+# -----------------------------
+def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=None):
+    if not os.path.exists(CREDS_FILE):
+        raise FileNotFoundError(f"{CREDS_FILE} not found")
+
+    creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPE)
+    client = gspread.authorize(creds)
+
+    try:
+        sheet = client.open(SHEET_NAME).sheet1
+    except Exception as e:
+        print("Error opening sheet:", e)
+        raise
+
+    # ----------- BUILD ROW ACCORDING TO YOUR SHEET -----------
+    row = []
+
+    # A-D Basic info
+    row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    row.append(user_info.get('name', 'Anonymous'))
+    row.append(user_info.get('occupation', ''))
+    row.append(user_info.get('education', ''))
+
+    # E Final RIASEC Code
+    row.append(riasec_code)
+
+    # F-K R, I, A, S, E, C scores
+    for code in RIASEC_ORDER:   # ['R','I','A','S','E','C']
+        row.append(riasec_scores.get(code, 0))
+
+    # L-W 12 aptitude scores (same order every time)
+    ordered_apts = [
+        "Logical Reasoning", "Mechanical", "Creative", "Verbal Communication",
+        "Numerical", "Social/Helping", "Leadership/Persuasion", "Digital/Computer",
+        "Organizing/Structuring", "Writing/Expression", "Scientific", "Spatial/Design"
+    ]
+
+    for apt in ordered_apts:
+        row.append(aptitude_scores.get(apt, 0))
+
+    # ---------------------------------------------------------
+
+    # FINAL SAFETY CHECK
+    if len(row) != 23:
+        print("ERROR: Expected 23 columns but got", len(row))
+        print("ROW CONTENT:", row)
+
+    # Save in Google Sheet
+    sheet.append_row(row)
+    return True
+
+
+# -----------------------------
+# Results Page
+# -----------------------------
 @app.route('/results')
 def results():
     if 'answers' not in session or not session['answers']:
         return redirect(url_for('index'))
 
     riasec_scores, aptitude_scores = calculate_scores()
+    riasec_code = resolve_riasec_code(riasec_scores)
+
+    session['last_riasec_code'] = riasec_code
+    session['last_riasec_scores'] = riasec_scores
+    session['last_aptitude_scores'] = aptitude_scores
 
     top_riasec = sorted(riasec_scores.items(), key=lambda x:x[1], reverse=True)[:3]
     top_aptitudes = sorted(aptitude_scores.items(), key=lambda x:x[1], reverse=True)[:3]
 
-    max_riasec_score = max(riasec_scores.values(), default=1)
-    max_aptitude_score = max(aptitude_scores.values(), default=1)
-
-    riasec_code = resolve_riasec_code(riasec_scores)
-
-    return render_template('results.html',
+    return render_template(
+        'results.html',
         riasec_code=riasec_code,
         top_riasec=top_riasec,
         top_aptitudes=top_aptitudes,
         all_riasec_scores=riasec_scores,
         all_aptitude_scores=aptitude_scores,
-        max_riasec_score=max_riasec_score,
-        max_aptitude_score=max_aptitude_score
+        max_riasec_score=max(riasec_scores.values()) if riasec_scores else 1,
+        max_aptitude_score=max(aptitude_scores.values()) if aptitude_scores else 1
     )
+
+@app.route('/save_results', methods=['POST'])
+def save_results():
+    if 'last_riasec_code' not in session:
+        return redirect(url_for('results'))
+
+    try:
+        save_to_google_sheet(
+            session['last_riasec_code'],
+            session['last_riasec_scores'],
+            session['last_aptitude_scores'],
+            session.get('user_info')
+        )
+        return jsonify({'success': True, 'msg': 'Results saved successfully!'})
+    except FileNotFoundError:
+        return jsonify({'success': False, 'msg': 'Service account file missing. Results not saved.'})
+    except Exception as e:
+        return jsonify({'success': False, 'msg': str(e)})
 
 @app.route('/restart')
 def restart():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('basic_info'))
 
+# -----------------------------
+# Main
+# -----------------------------
 if __name__ == '__main__':
-    if app.config.get('DEBUG', False):
-        app.run(debug=True)
-    else:
-        port = int(os.getenv('PORT', 5000))
-        app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000, debug=True)
