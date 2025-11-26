@@ -136,7 +136,7 @@ def calculate_scores(use_text_enrichment=False):
     return riasec_scores, dict(aptitude_scores)
 
 # -----------------------------
-# Tie-breaker Logic (FINAL)
+# Tie-breaker Logic
 # -----------------------------
 MAX_TIE_BREAKER_QS = 3
 RIASEC_ORDER = ['R','I','A','S','E','C']
@@ -148,25 +148,21 @@ def sort_pairs_resolver_style(pairs):
     return sorted(pairs, key=key_func)
 
 def identify_tie_pairs(riasec_scores):
-
     sorted_scores = sorted(
         riasec_scores.items(),
         key=lambda x: (-x[1], RIASEC_ORDER.index(x[0]))
     )
-
     pairs = set()
 
-    # Top-1 vs Top-2 (keep original rule)
     top1_code, top1_score = sorted_scores[0]
     top2_code, top2_score = sorted_scores[1]
 
-    if abs(top1_score - top2_score) < 2:
+    if abs(top1_score - top2_score) <= 1:
         pairs.add(f"{min(top1_code, top2_code)}-{max(top1_code, top2_code)}")
 
-    # NEW — Top-2 vs Top-3 ONLY
     if len(sorted_scores) >= 3:
         top3_code, top3_score = sorted_scores[2]
-        if abs(top2_score - top3_score) < 2:
+        if abs(top2_score - top3_score) <= 1:
             pairs.add(f"{min(top2_code, top3_code)}-{max(top2_code, top3_code)}")
 
     return pairs
@@ -203,13 +199,11 @@ def save_basic_info():
 
 @app.route('/assessment')
 def assessment():
-
     if 'user_info' not in session:
         return redirect(url_for('basic_info'))
 
     # ---- MAIN PHASE ----
     if not session.get('tie_breaker_phase', False):
-
         if session['current_question'] <= len(session['shuffled_questions']):
             q = session['shuffled_questions'][session['current_question'] - 1]
             return render_template(
@@ -220,22 +214,15 @@ def assessment():
                 current_question=session['current_question']
             )
 
-        # main finished — check tie-break needs
+        # Main finished — check tie-breaker
         riasec_scores,_ = calculate_scores()
         pairs_needed = identify_tie_pairs(riasec_scores)
-
         already = set(session.get('tie_breaker_pairs_asked', []))
         remaining_pairs = pairs_needed - already
 
         if remaining_pairs:
             session['tie_breaker_phase'] = True
-
-            # FIX — SORT PAIRS ALWAYS
-            sorted_pairs = sort_pairs_resolver_style(remaining_pairs)
-
-            session['tie_breaker_pairs_asked'].extend(sorted_pairs)
-
-            new_qs = get_questions_for_pairs(sorted_pairs, already)
+            new_qs = get_questions_for_pairs(remaining_pairs, already)
             if not new_qs:
                 return redirect(url_for('submit_all_answers'))
 
@@ -243,6 +230,8 @@ def assessment():
             session['tie_breaker_answered'] = 0
             session['total_questions'] = len(session['shuffled_questions']) + len(new_qs)
 
+            # Now mark pairs as asked
+            session['tie_breaker_pairs_asked'].extend(remaining_pairs)
             return redirect(url_for('assessment'))
 
         return redirect(url_for('submit_all_answers'))
@@ -250,7 +239,6 @@ def assessment():
     # ---- TIE BREAKER PHASE ----
     tie_qs = session.get('tie_breaker_questions', [])
     answered = session.get('tie_breaker_answered', 0)
-
     if answered < len(tie_qs):
         q = tie_qs[answered]
         display_index = len(session['shuffled_questions']) + answered + 1
@@ -266,7 +254,6 @@ def assessment():
 
 @app.route('/save_answer', methods=['POST'])
 def save_answer():
-
     if 'current_question' not in session:
         return jsonify({'success': False, 'redirect': url_for('basic_info')})
 
@@ -298,21 +285,15 @@ def submit_all_answers():
     return redirect(url_for('results'))
 
 # -----------------------------
-# RIASEC Resolver (unchanged)
+# RIASEC Resolver
 # -----------------------------
 def resolve_riasec_code(riasec_scores):
-
-    # Stable sorted list
     sorted_scores = sorted(
         riasec_scores.items(),
         key=lambda x: (-x[1], RIASEC_ORDER.index(x[0]))
     )
-
-    # Just take first 3 after sorting
     top3 = [code for code, score in sorted_scores[:3]]
-
     return ''.join(top3)
-
 
 # -----------------------------
 # Google Sheets Saving
@@ -330,43 +311,26 @@ def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=
         print("Error opening sheet:", e)
         raise
 
-    # ----------- BUILD ROW ACCORDING TO YOUR SHEET -----------
-    row = []
-
-    # A-D Basic info
-    row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    row.append(user_info.get('name', 'Anonymous'))
-    row.append(user_info.get('occupation', ''))
-    row.append(user_info.get('education', ''))
-
-    # E Final RIASEC Code
-    row.append(riasec_code)
-
-    # F-K R, I, A, S, E, C scores
-    for code in RIASEC_ORDER:   # ['R','I','A','S','E','C']
-        row.append(riasec_scores.get(code, 0))
-
-    # L-W 12 aptitude scores (same order every time)
-    ordered_apts = [
-        "Logical Reasoning", "Mechanical", "Creative", "Verbal Communication",
-        "Numerical", "Social/Helping", "Leadership/Persuasion", "Digital/Computer",
-        "Organizing/Structuring", "Writing/Expression", "Scientific", "Spatial/Design"
+    row = [
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        user_info.get('name', 'Anonymous'),
+        user_info.get('occupation', ''),
+        user_info.get('education', ''),
+        riasec_code
     ]
 
-    for apt in ordered_apts:
+    for code in RIASEC_ORDER:
+        row.append(riasec_scores.get(code, 0))
+
+    for apt in NEW_APTITUDES:
         row.append(aptitude_scores.get(apt, 0))
 
-    # ---------------------------------------------------------
-
-    # FINAL SAFETY CHECK
     if len(row) != 23:
         print("ERROR: Expected 23 columns but got", len(row))
         print("ROW CONTENT:", row)
 
-    # Save in Google Sheet
     sheet.append_row(row)
     return True
-
 
 # -----------------------------
 # Results Page
@@ -424,4 +388,5 @@ def restart():
 # Main
 # -----------------------------
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)

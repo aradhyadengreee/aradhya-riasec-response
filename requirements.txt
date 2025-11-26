@@ -1,2 +1,11 @@
 Flask
-python-dotenv
+gspread
+google-auth
+google-auth-oauthlib
+oauthlib
+requests
+Jinja2      
+itsdangerous 
+Werkzeug     
+click
+gunicorn
