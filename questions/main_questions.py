@@ -1,481 +1,515 @@
 QUESTIONS = [
     {
         "number": 1,
-        "question": "Which activity feels more natural to you?",
+        "question": "Which activity would you prefer?",
         "options": {
             "A": {
-                "text": "Fix a bicycle or assemble simple gadgets",
+                "text": "Build and repair mechanical equipment",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1, "Logical Reasoning": 1 }
             },
             "B": {
-                "text": "Test soil and water for plant health",
+                "text": "Research/analyze scientific problems",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Logical Reasoning": 1, "Numerical": 1}
+                "aptitudes": { "Scientific": 1, "Logical Reasoning": 1, "Numerical": 1 }
             }
         }
     },
     {
         "number": 2,
-        "question": "Which task interests you more?",
+        "question": "Which type of work interests you more?",
         "options": {
             "A": {
-                "text": "Measure liquid temperatures during small experiments",
+                "text": "Conduct laboratory experiments",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Numerical": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Scientific": 1, "Numerical": 1, "Logical Reasoning": 1 }
             },
             "B": {
-                "text": "Install shelves or fit basic home items",
+                "text": "Operate tools/equipment",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             }
         }
     },
     {
         "number": 3,
-        "question": "What appeals to you more?",
+        "question": "Which would you rather do?",
         "options": {
             "A": {
-                "text": "Troubleshoot why a laptop won't start",
+                "text": "Install/fix equipment",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1, "Logical Reasoning": 1 }
             },
             "B": {
-                "text": "Design a poster or create character sketches",
+                "text": "Design artwork/visuals",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1 }
             }
         }
     },
     {
         "number": 4,
-        "question": "Which activity suits you better?",
+        "question": "Which appeals to you more?",
         "options": {
             "A": {
-                "text": "Write poems or create short music pieces",
+                "text": "Create music/stories",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Writing/Expression": 1 }
             },
             "B": {
-                "text": "Cut wood and assemble a small stool",
+                "text": "Work with machinery/materials",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             }
         }
     },
     {
         "number": 5,
-        "question": "Which environment fits you better?",
+        "question": "Which work environment appeals to you more?",
         "options": {
             "A": {
-                "text": "Set up outdoor tools or arrange garden fittings",
+                "text": "Work outdoors with tools",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             },
             "B": {
-                "text": "Explain tough concepts clearly to someone struggling",
+                "text": "Teach/support people",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1, "Writing/Expression": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1, "Writing/Expression": 1 }
             }
         }
     },
     {
         "number": 6,
-        "question": "Which description fits you better?",
+        "question": "Which type of work would you find more fulfilling?",
         "options": {
             "A": {
-                "text": "Guide someone through solving a personal issue",
+                "text": "Help people solve problems",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1, "Logical Reasoning": 1 }
             },
             "B": {
-                "text": "Repair broken items or reassemble small devices",
+                "text": "Build/repair objects",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             }
         }
     },
     {
         "number": 7,
-        "question": "Where do you contribute more naturally?",
+        "question": "Which role interests you more?",
         "options": {
             "A": {
-                "text": "Coordinate a team and track project tasks",
-                "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Verbal Communication": 1, "Organizing/Structuring": 1}
+                "text": "Operate machinery",
+                "riasec": "R",
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             },
             "B": {
-                "text": "Assemble setups or prepare physical workstations",
-                "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "text": "Manage/lead projects",
+                "riasec": "E",
+                "aptitudes": {
+                    "Leadership/Persuasion": 1,
+                    "Verbal Communication": 1,
+                    "Organizing/Structuring": 1
+                }
             }
         }
     },
     {
         "number": 8,
-        "question": "What feels more aligned with you?",
+        "question": "Which would you prefer?",
         "options": {
             "A": {
-                "text": "Convince people and present ideas confidently",
+                "text": "Persuade/Negotiate",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Verbal Communication": 1}
+                "aptitudes": { "Leadership/Persuasion": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Arrange materials or prepare task-ready tools",
+                "text": "Hands-on equipment handling",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             }
         }
     },
     {
         "number": 9,
-        "question": "Which responsibility fits you best?",
+        "question": "Which work style suits you better?",
         "options": {
             "A": {
-                "text": "Sort documents alphabetically for easy access",
-                "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "text": "Practical tool work",
+                "riasec": "R",
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             },
             "B": {
-                "text": "Complete hands-focused tasks requiring physical coordination",
-                "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "text": "Organize records/data",
+                "riasec": "C",
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             }
         }
     },
     {
         "number": 10,
-        "question": "Which task feels more comfortable?",
+        "question": "Which type of task do you prefer?",
         "options": {
             "A": {
-                "text": "Maintain neat logs and update entries regularly",
+                "text": "Maintain accurate records",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             },
             "B": {
-                "text": "Set up basic hardware or adjust components",
+                "text": "Hands-on machinery operation",
                 "riasec": "R",
-                "aptitudes": {"Mechanical": 1, "Spatial/Design": 1}
+                "aptitudes": { "Mechanical": 1, "Spatial/Design": 1 }
             }
         }
     },
+
+    # ————— CONTINUES —————
+
     {
         "number": 11,
-        "question": "Which task represents your thinking style?",
+        "question": "Which appeals to you more?",
         "options": {
             "A": {
-                "text": "Examine data patterns to find conclusions",
+                "text": "Analyze complex data",
                 "riasec": "I",
-                "aptitudes": {"Logical Reasoning": 1, "Scientific": 1, "Numerical": 1}
+                "aptitudes": { "Logical Reasoning": 1, "Scientific": 1, "Numerical": 1 }
             },
             "B": {
-                "text": "Create sketches or express ideas visually",
+                "text": "Creative expression",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1 }
             }
         }
     },
     {
         "number": 12,
-        "question": "Which role do you enjoy more?",
+        "question": "Which type of work would you find more engaging?",
         "options": {
             "A": {
-                "text": "Design illustrations or craft original visuals",
+                "text": "Create visuals/performances",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1 }
             },
             "B": {
-                "text": "Study how systems behave under changes",
+                "text": "Study systems/research",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Logical Reasoning": 1, "Numerical": 1}
+                "aptitudes": { "Scientific": 1, "Logical Reasoning": 1, "Numerical": 1 }
             }
         }
     },
     {
         "number": 13,
-        "question": "Which feels more fulfilling?",
+        "question": "Which interests you more?",
         "options": {
             "A": {
-                "text": "Explore scientific ideas through observation experiments",
+                "text": "Research scientific theories",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Scientific": 1, "Logical Reasoning": 1 }
             },
             "B": {
-                "text": "Support someone's personal development journey",
+                "text": "Help others grow",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1, "Writing/Expression": 1}
+                "aptitudes": {
+                    "Social/Helping": 1,
+                    "Verbal Communication": 1,
+                    "Writing/Expression": 1
+                }
             }
         }
     },
     {
         "number": 14,
-        "question": "Where do your strengths show more?",
+        "question": "Which would you rather focus on?",
         "options": {
             "A": {
-                "text": "Tutor someone who struggles to understand topics",
+                "text": "Support/teach people",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Analyze questions using logical and numerical methods",
+                "text": "Analyze/testing hypotheses",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Numerical": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Scientific": 1, "Numerical": 1, "Logical Reasoning": 1 }
             }
         }
     },
     {
         "number": 15,
-        "question": "Which challenge excites you more?",
+        "question": "Which role appeals to you more?",
         "options": {
             "A": {
-                "text": "Investigate reasons behind unexpected outcomes",
+                "text": "Investigate complex issues",
                 "riasec": "I",
-                "aptitudes": {"Logical Reasoning": 1, "Scientific": 1, "Numerical": 1}
+                "aptitudes": { "Logical Reasoning": 1, "Scientific": 1, "Numerical": 1 }
             },
             "B": {
-                "text": "Lead a team and manage planned targets",
+                "text": "Lead teams",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Verbal Communication": 1, "Organizing/Structuring": 1}
+                "aptitudes": {
+                    "Leadership/Persuasion": 1,
+                    "Verbal Communication": 1,
+                    "Organizing/Structuring": 1
+                }
             }
         }
     },
+
+    # ————— rest from question 16 to 30 ——— calculated same way as your PDF ———
+
     {
         "number": 16,
-        "question": "Which area suits you better?",
+        "question": "Which would you prefer?",
         "options": {
             "A": {
-                "text": "Coordinate operations and handle important decisions",
+                "text": "Manage operations/decisions",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Organizing/Structuring": 1, "Verbal Communication": 1}
+                "aptitudes": {
+                    "Leadership/Persuasion": 1,
+                    "Organizing/Structuring": 1,
+                    "Verbal Communication": 1
+                }
             },
             "B": {
-                "text": "Perform experiments and track accurate results",
+                "text": "Conduct experiments",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Numerical": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Scientific": 1, "Numerical": 1, "Logical Reasoning": 1 }
             }
         }
     },
     {
         "number": 17,
-        "question": "What aligns more with your curiosity?",
+        "question": "Which work style suits you better?",
         "options": {
             "A": {
-                "text": "Research topics to uncover meaningful insights",
+                "text": "Research to discover knowledge",
                 "riasec": "I",
-                "aptitudes": {"Scientific": 1, "Logical Reasoning": 1}
+                "aptitudes": { "Scientific": 1, "Logical Reasoning": 1 }
             },
             "B": {
-                "text": "Arrange data into clear, structured formats",
+                "text": "Organize information systems",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             }
         }
     },
     {
         "number": 18,
-        "question": "Which task fits you more?",
+        "question": "Which type of task do you prefer?",
         "options": {
             "A": {
-                "text": "Review and organize files for clarity",
+                "text": "Process data accurately",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             },
             "B": {
-                "text": "Break down problems to find workable solutions",
+                "text": "Investigate/analyze problems",
                 "riasec": "I",
-                "aptitudes": {"Logical Reasoning": 1, "Scientific": 1, "Numerical": 1}
+                "aptitudes": { "Logical Reasoning": 1, "Scientific": 1, "Numerical": 1 }
             }
         }
     },
     {
         "number": 19,
-        "question": "What energizes you more?",
+        "question": "Which appeals to you more?",
         "options": {
             "A": {
-                "text": "Create imaginative artwork or expressive visuals",
+                "text": "Create artistic work",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1 }
             },
             "B": {
-                "text": "Help someone understand ideas clearly",
+                "text": "Support/teach others",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1 }
             }
         }
     },
     {
         "number": 20,
-        "question": "What feels more meaningful?",
+        "question": "Which would you find more rewarding?",
         "options": {
             "A": {
-                "text": "Assist people in improving daily life skills",
+                "text": "Improve well-being",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Create designs, illustrations, or written content",
+                "text": "Create art/design/writing",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Writing/Expression": 1 }
             }
         }
     },
     {
         "number": 21,
-        "question": "Which feels more like something you'd enjoy?",
+        "question": "Which interests you more?",
         "options": {
             "A": {
-                "text": "Work on creative projects with visual elements",
+                "text": "Create artistic projects",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1, "Writing/Expression": 1 }
             },
             "B": {
-                "text": "Lead a project and coordinate responsibilities",
+                "text": "Lead ventures",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Organizing/Structuring": 1, "Verbal Communication": 1}
+                "aptitudes": {
+                    "Leadership/Persuasion": 1,
+                    "Organizing/Structuring": 1,
+                    "Verbal Communication": 1
+                }
             }
         }
     },
     {
         "number": 22,
-        "question": "What reflects your strength better?",
+        "question": "Which role would you prefer?",
         "options": {
             "A": {
-                "text": "Guide decisions and influence positive outcomes",
+                "text": "Direct operations & persuade",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Verbal Communication": 1}
+                "aptitudes": { "Leadership/Persuasion": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Create fresh ideas or innovative design concepts",
+                "text": "Create innovative designs",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1 }
             }
         }
     },
     {
         "number": 23,
-        "question": "Where do you feel more confident?",
+        "question": "Which work style appeals to you more?",
         "options": {
             "A": {
-                "text": "Brainstorm creative ideas for new content",
+                "text": "Develop creative ideas",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Writing/Expression": 1}
+                "aptitudes": { "Creative": 1, "Writing/Expression": 1 }
             },
             "B": {
-                "text": "Work with structured systems and clear rules",
+                "text": "Work with structured systems",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             }
         }
     },
     {
         "number": 24,
-        "question": "Which task do you prefer?",
+        "question": "Which would you rather do?",
         "options": {
             "A": {
-                "text": "Maintain organized lists and clean documentation",
+                "text": "Maintain systematic records",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             },
             "B": {
-                "text": "Make creative artwork or conceptual sketches",
+                "text": "Create design/artwork",
                 "riasec": "A",
-                "aptitudes": {"Creative": 1, "Spatial/Design": 1}
+                "aptitudes": { "Creative": 1, "Spatial/Design": 1 }
             }
         }
     },
     {
         "number": 25,
-        "question": "What suits your personality more?",
+        "question": "Which type of work interests you more?",
         "options": {
             "A": {
-                "text": "Guide people through personal or academic doubts",
+                "text": "Support personal development",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Manage group tasks and assign responsibilities",
+                "text": "Lead teams/initiatives",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Organizing/Structuring": 1, "Verbal Communication": 1}
+                "aptitudes": {
+                    "Leadership/Persuasion": 1,
+                    "Organizing/Structuring": 1,
+                    "Verbal Communication": 1
+                }
             }
         }
     },
     {
         "number": 26,
-        "question": "Which description fits you better?",
+        "question": "Which would you find more fulfilling?",
         "options": {
             "A": {
-                "text": "Motivate groups and guide overall direction",
+                "text": "Drive organizational success",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Verbal Communication": 1}
+                "aptitudes": { "Leadership/Persuasion": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Help individuals overcome learning challenges",
+                "text": "Teach/counsel others",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1, "Writing/Expression": 1}
+                "aptitudes": {
+                    "Social/Helping": 1,
+                    "Verbal Communication": 1,
+                    "Writing/Expression": 1
+                }
             }
         }
     },
     {
         "number": 27,
-        "question": "Where do you feel more comfortable?",
+        "question": "Which appeals to you more?",
         "options": {
             "A": {
-                "text": "Support people through discussions and advice",
+                "text": "Work in helping/teaching roles",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1 }
             },
             "B": {
-                "text": "Sort files and organize digital folders neatly",
+                "text": "Organize files/data",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             }
         }
     },
     {
         "number": 28,
-        "question": "Which activity do you prefer?",
+        "question": "Which work environment would you prefer?",
         "options": {
             "A": {
-                "text": "Maintain updated records and verify details",
+                "text": "Process information/documentation",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             },
             "B": {
-                "text": "Assist others with tasks or personal concerns",
+                "text": "Support people's needs",
                 "riasec": "S",
-                "aptitudes": {"Social/Helping": 1, "Verbal Communication": 1}
+                "aptitudes": { "Social/Helping": 1, "Verbal Communication": 1 }
             }
         }
     },
     {
         "number": 29,
-        "question": "What responsibility matches your style?",
+        "question": "Which role interests you more?",
         "options": {
             "A": {
-                "text": "Plan budgets or oversee project timelines",
+                "text": "Lead projects & budgets",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Organizing/Structuring": 1, "Numerical": 1}
+                "aptitudes": { "Leadership/Persuasion": 1, "Organizing/Structuring": 1, "Numerical": 1 }
             },
             "B": {
-                "text": "Maintain clear and consistent digital records",
+                "text": "Maintain records",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             }
         }
     },
     {
         "number": 30,
-        "question": "Which task feels more suitable?",
+        "question": "Which would you rather focus on?",
         "options": {
             "A": {
-                "text": "Organize workflows or arrange information systems",
+                "text": "Organize data systems",
                 "riasec": "C",
-                "aptitudes": {"Organizing/Structuring": 1, "Digital/Computer": 1}
+                "aptitudes": { "Organizing/Structuring": 1, "Digital/Computer": 1 }
             },
             "B": {
-                "text": "Influence decisions and steer group outcomes",
+                "text": "Persuade & influence outcomes",
                 "riasec": "E",
-                "aptitudes": {"Leadership/Persuasion": 1, "Verbal Communication": 1}
+                "aptitudes": { "Leadership/Persuasion": 1, "Verbal Communication": 1 }
             }
         }
     }
