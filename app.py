@@ -303,53 +303,56 @@ import gspread
 from datetime import datetime
 
 def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=None):
-    # Embedded service account info
+
+    # === SERVICE ACCOUNT JSON (copy exactly from your .json file) ===
     SERVICE_ACCOUNT_INFO = {
-        "type": "service_account",
-        "project_id": "riasec-responses",
-        "private_key_id": "ddd055de2197345d2bf0670980236cf5063464a4",
-        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCVx87CSO5pKos0\nNVYVEVt2EL9xBuN0slgzzM2toRd+LNEw9gRZICKr7iC62PwpufMGvYuj8ptQMx9o\nkW6HrU2bx7sidIJSH3rx1+DVHE/DoR8BImfkquFC/0/yW8CyuU8gSkHaNfEW/pPM\nun8AHxw+1cLreKGkq0re74lgyipvJoanmR5mxHAFDfn9MFdUjBNBenrbDkvLEP/i\nB9fwDreqUrJFyc7fquUqOKlJCCUTHYuXhGDQc3xb+8sTLKweVsQN9KNaYkJmySVP\nQ7zVGpUQj8l0Ov0igtpqj+q4X+AgPlYSxT+vKbOLsIEeNP+QRnfwkBi+kSdNOwRK\nz4TsxT9PAgMBAAECggEAMO0z/QMV3gSntEY3+GnTFp4h6yn04wnfBgzAoxccNXsu\nWnACu5pjuQXwaxi2RmsXl/wSwVteoLQSbnYTRP63e0ujNX4Zk/n0j0uVhgfZhm37\nUsOKbIflTZ1Y4DJYoAkob8PR/xXfy0MdxKKnGcMP1va81W5yXvgVXP2iQpvHgMb1\nB1nDIHN/exktk4GD1/H4UWoEsa1yTiC7APQ6rXXDR6J1HS+aCy9OF/GNl/Qb5FTu\ncsNoUgtkEUuBux5R8O7a0Fr8qK9hmd1E8o1h1RI6Ci9GWd7tSPLhFfiXgTNWwuN9\nx/DGDu9OuzUFvH3k6YUZn1U3hjkR6X7gd73srNgLAQKBgQDD7qYTNVnGXXywHfER\nAfEqey1Y5YzwE4S2WPWTUBKTB6wzKpI+Q6wbvsEsNzVKQTxU47eLqMR2sWXE4nnx\nyZbEQ/Ynne6fyZLNWf1usFKBpffnKJP9Zr7lDzKtAeANUgB+9SBX5pzALpAxlDEF\nzitgSrH4ExviuSiU8xI4ZkBT6wKBgQDDswhY8T3kaOYisGHRToSFPgvQ4uuwuHfl\npA7gWP8BFDtj8RFnWCcL6oOq4A6x9y3nZkoFfxPHtwcQcV4A8N20zAeC9njelM6o\nIK3DNWD1nJxHNWUYgyE1J8fXneEdipRQSFP/IRKG8e+zljeeNrKWo2Tu+nhsWC0a\nHx/4+ga9LQKBgQC1YbKAybzoNBd/+tf2BLQ7vXhHeYo1nfwXytbcnx3y2wGBBIIJ\n/h/QN5Eg26MLsMSnWX/LXFsz/hnWYEq/mP1nh/rSxhPn/HVYgVxqIfTfbMPITPpj\ndcB20ND69Gd0LVukLEza0vR9vR1jqGqRk0D4jW2f2CDSjNKSwUs2xwH6LQKBgB2w\nDTYg8rixySe+BjjQZn4oGXbI1eRrN5UYvEEAfz7UqOXSbkd1Mgc2vl6vusr4qngO\nJnCLBJ8pfuLZr98IqzmAMiuF5HQvsuICgxm4AUuBRJvw17NOQT1lGYX2J25p1XIQ\nZt2vULY0AZ8GzM0tkw4TH365dIdLIRxzWFBW7arJAoGAASza0EMMVH546zGwSU6e\nLfzXFKdr1ScH8GlX2wUNrmVN0sJJPFYXJJcV8I6IAaU2FxE7rh9OJbVPABGAC6L9\nGAz/iSaVgjeL899yprUkns09GLwiGaz3q6h4UPvDbMjspV7czd4/QUkWhCflHsU9\nM/3ZOqYtDGdF65Jcap5m1DY=\n-----END PRIVATE KEY-----\n",
-        "client_email": "riasec-client@riasec-responses.iam.gserviceaccount.com",
-        "client_id": "109370773003926881947",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/riasec-client%40riasec-responses.iam.gserviceaccount.com",
-        "universe_domain": "googleapis.com"
-    }
+  "type": "service_account",
+  "project_id": "riasec-responses",
+  "private_key_id": "5bb4f460c8b974ec9436202ef94bb9bda5471dba",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEugIBADANBgkqhkiG9w0BAQEFAASCBKQwggSgAgEAAoIBAQCvPyNEE+T0WpK3\nnazpoo8LVb4eDAJi3ObDLsC1D04kmHeH38XdPXJHR2oo/YdJtY8rysIyDeUOUos5\nnTBQMKpBG/lGR/F/8tZE6Ep/t/JQUvcuxZYQgHxgURYiOfSPIGY+aIy5KzyxaFSm\nU7qJO74e1r1GixwNNH2iUfsZpeFByAXw0t7hPb2gTtnl9JmmUvSw0VGzaR0ZZbKq\n3H3tYtIDXt1r5XWw+aeWbLNIQV7TsNHME1XecHeDjGsIGza4QNu4PqbfcQwyaMQ2\nRtUIYFzzv9Pk1ukntKKwOaZTd8xktFxq+Y15tJWn/scFN+H5acIUaUewsvHBLmWd\nH9IEkIhxAgMBAAECgf9wm6GNnTsByTF9y1PQzSQdpHsF07G01T1zLhemQK911IL6\nTFBYWaOVKc6NiFvmgUP+X8tpXoRRL7lGzDq/TIYaUF9dSd1k2iXVIW69ovWRp74t\nz8kd0XIacgBG/faoAamxcHz8f0wAs4mxVxwGEt2X82Ssb7cWxSP1qbgwQub73PuC\nioucL2d8FOFnozfSmBjx4VWMPDaGwrRnEZvoGSnpas0FDTsBXBTCfjMP29fvY7/J\npS1Uc2J+cFdxw6nclWM7zy8YcquwdLzMJQ7KRrEB9jUEYO3a/zNRIWWW0Aq5idOU\nX46y6BS3tW8j7tk0gMfixs2FqT29dOxDKfRP5IMCgYEA3NIjt8LS3O2+rbtgqjgC\nD9QkgOg4TEwrbXEayWzIXGZ2NJspqPPTFH46Hee7GbeOFLrD6kTYIYeV0SViqZv4\nPxyyvbEIFrn1nwRDhpziD05ynN7aaqMfV9zS3NcQ4LntUgly9ANQ2bPT3l1dXnPz\n7nPxnxOqMpl13SRixXot578CgYEAyypRsWNPnxJLIUs7CfLjTdjRux5XUMiZnnR3\nxBpY/P1E7JwNHMvLZo5bG+fTc1bo3wdb7M5O2+gBwDHshFrtLy2Gl6CWdBb8/FbE\ngRlFh5AN2nXmymivqUR9zEG3pAWxLG84kyATJyP1wsNLW59egVHJ2GRJstvvhpMP\nMSY/G88CgYAabEK94GAe84vXeg5tD9qfTkE385GY/5xKsjgEVjH7bH9EeDSZ9OMT\nFq+ZmHr47s/fhyGeTLKYAINazWBq7zDbTHHO5PoUzhen+XijCO676iUoxDnafL5p\nYxEQP+PTICxXnq3UqPjps+zsNLvRa4qKw/DrmgzJlTdXSN1Qx/fqPQKBgFsaYv+0\nlOO0BFSts4/Ghv9FlubduDHVgm13tK0PU5A+0kV3xLmA+XjHpTtiPYOfGVXJqwMJ\nkHs0EnTo7jJ7w5hARfaAYHc2R8Ov9PYfKvqbMlsgO5nQT9ULjY2men7mvog6Z5gx\n7eTDT1VC1ewEDxDWaDjM3++AiGxETa+wguQpAoGAPAOOVixNOO/DBf9He2yKdQux\nw5WvHpDU/g1dpaDz/e0jibrbqq1dC/x/INiB2kR5btyz2pht612pQZAoMiT+6glI\nvZmtm9yp+yN+uvpV202SVHRFvsPgdJnjtRNYM6FCz1LbSlKywA/u5K+msskLlb64\naK8csq5raB6t7dLhkmQ=\n-----END PRIVATE KEY-----\n",
+  "client_email": "riasec-client@riasec-responses.iam.gserviceaccount.com",
+  "client_id": "109370773003926881947",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/riasec-client%40riasec-responses.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
 
-    SCOPE = ['https://www.googleapis.com/auth/spreadsheets']
-    SHEET_NAME = "riasec_responses"
-    RIASEC_ORDER = ['R', 'I', 'A', 'S', 'E', 'C']  # adjust if different
-    NEW_APTITUDES = ['apt1', 'apt2', 'apt3', 'apt4', 'apt5', 'apt6', 'apt7']  # adjust as needed
 
-    # Create credentials from dict instead of file
+    # === GOOGLE SHEET CONFIG ===
+    SCOPE = ["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"]
+    SHEET_NAME = "R1"
+
+    # Use the existing constants from your app
+    global RIASEC_ORDER, NEW_APTITUDES
+
+    # === AUTHENTICATE ===
     creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPE)
     client = gspread.authorize(creds)
 
     try:
         sheet = client.open(SHEET_NAME).sheet1
     except Exception as e:
-        print("Error opening sheet:", e)
+        print("ERROR opening Google Sheet:", e)
         raise
 
+    # === BUILD ROW ===
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        user_info.get('name', 'Anonymous') if user_info else 'Anonymous',
-        user_info.get('occupation', '') if user_info else '',
-        user_info.get('education', '') if user_info else '',
+        user_info.get('name', 'Anonymous'),
+        user_info.get('occupation', ''),
+        user_info.get('education', ''),
         riasec_code
     ]
 
+    # Add RIASEC Scores
     for code in RIASEC_ORDER:
         row.append(riasec_scores.get(code, 0))
 
+    # Add Aptitude Scores
     for apt in NEW_APTITUDES:
         row.append(aptitude_scores.get(apt, 0))
-
-    if len(row) != 23:
-        print("ERROR: Expected 23 columns but got", len(row))
-        print("ROW CONTENT:", row)
 
     sheet.append_row(row)
     return True
