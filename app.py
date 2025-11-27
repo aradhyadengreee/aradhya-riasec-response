@@ -188,7 +188,7 @@ def identify_tie_pairs(riasec_scores):
     if abs(score1 - score2) < 2:
         pairs.add(f"{min(top1, top2)}-{max(top1, top2)}")
 
-    if len(sorted_scores) >= 3:
+    if len(sorted_scores) > 2:
         top3, score3 = sorted_scores[2]
         if abs(score2 - score3) < 2:
             pairs.add(f"{min(top2, top3)}-{max(top2, top3)}")
