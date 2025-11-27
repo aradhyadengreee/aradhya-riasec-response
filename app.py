@@ -163,6 +163,24 @@ def calculate_scores(use_text_enrichment=False):
 
     return riasec_scores, dict(aptitude_scores)
 
+
+def convert_to_percentiles(score_dict):
+    """
+    Converts aptitude scores into percentiles (0–100 scale)
+    based on the highest score.
+    """
+    if not score_dict:
+        return {}
+
+    max_score = max(score_dict.values()) or 1
+
+    percentiles = {
+        key: round((value / max_score) * 100, 2)
+        for key, value in score_dict.items()
+    }
+
+    return percentiles
+
 # -----------------------------
 # Tie-breaker Logic
 # -----------------------------
@@ -373,15 +391,18 @@ def results():
     if not session.get('answers'):
         return redirect(url_for('index'))
 
-    riasec_scores, aptitude_scores = calculate_scores()
+    riasec_scores, aptitude_scores_raw = calculate_scores()
+    aptitude_scores = convert_to_percentiles(aptitude_scores_raw)
     riasec_code = resolve_riasec_code(riasec_scores)
 
     session['last_riasec_code'] = riasec_code
     session['last_riasec_scores'] = riasec_scores
     session['last_aptitude_scores'] = aptitude_scores
 
+
     top_riasec = sorted(riasec_scores.items(), key=lambda x:x[1], reverse=True)[:3]
     top_aptitudes = sorted(aptitude_scores.items(), key=lambda x:x[1], reverse=True)[:3]
+
 
     return render_template(
         'results.html',
