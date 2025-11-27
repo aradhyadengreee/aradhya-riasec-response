@@ -2,7 +2,7 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [ test ]
+    branches: [ test-riasec ]
 
 env:
   PROJECT_ID: project-aradhya-dengre
