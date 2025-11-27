@@ -2,13 +2,13 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [ main ]
+    branches: [ test ]
 
 env:
   PROJECT_ID: project-aradhya-dengre
   REGION: asia-southeast1
-  SERVICE_NAME: riasec-responses
-  REPO_NAME: riasec-responses
+  SERVICE_NAME: riasec-responses-test
+  REPO_NAME: riasec-responses-test
 
 jobs:
   deploy:
