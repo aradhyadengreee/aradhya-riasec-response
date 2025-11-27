@@ -14,13 +14,6 @@ from questions.main_questions import QUESTIONS
 from questions.tie_breaker_questions import TIE_BREAKER_QUESTIONS
 
 # -----------------------------
-# Google Sheets config
-# -----------------------------
-CREDS_FILE = "/home/gaurav-trscholar/Downloads/riasec_app_tiebreaker/riasec-responses-ddd055de2197.json"
-SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-SHEET_NAME = "R1"
-
-# -----------------------------
 # App Initialization
 # -----------------------------
 def create_app():
@@ -110,12 +103,10 @@ def calculate_scores(use_text_enrichment=False):
         option = question['options'][selected]
         q_weight = question.get('weight', 1)
 
-        # RIASEC
         riasec_code = option.get('riasec')
         if riasec_code in riasec_scores:
             riasec_scores[riasec_code] += q_weight
 
-        # Aptitudes
         if qnum <= main_total:
             option_apts = option.get('aptitudes', {}) or {}
             for old_key, score in option_apts.items():
@@ -202,7 +193,6 @@ def assessment():
     if 'user_info' not in session:
         return redirect(url_for('basic_info'))
 
-    # ---- MAIN PHASE ----
     if not session.get('tie_breaker_phase', False):
         if session['current_question'] <= len(session['shuffled_questions']):
             q = session['shuffled_questions'][session['current_question'] - 1]
@@ -214,7 +204,6 @@ def assessment():
                 current_question=session['current_question']
             )
 
-        # Main finished — check tie-breaker
         riasec_scores,_ = calculate_scores()
         pairs_needed = identify_tie_pairs(riasec_scores)
         already = set(session.get('tie_breaker_pairs_asked', []))
@@ -223,20 +212,16 @@ def assessment():
         if remaining_pairs:
             session['tie_breaker_phase'] = True
             new_qs = get_questions_for_pairs(remaining_pairs, already)
-            if not new_qs:
-                return redirect(url_for('submit_all_answers'))
 
             session['tie_breaker_questions'] = new_qs
             session['tie_breaker_answered'] = 0
             session['total_questions'] = len(session['shuffled_questions']) + len(new_qs)
-
-            # Now mark pairs as asked
             session['tie_breaker_pairs_asked'].extend(remaining_pairs)
+
             return redirect(url_for('assessment'))
 
         return redirect(url_for('submit_all_answers'))
 
-    # ---- TIE BREAKER PHASE ----
     tie_qs = session.get('tie_breaker_questions', [])
     answered = session.get('tie_breaker_answered', 0)
     if answered < len(tie_qs):
@@ -296,15 +281,10 @@ def resolve_riasec_code(riasec_scores):
     return ''.join(top3)
 
 # -----------------------------
-# Google Sheets Saving
+# Google Sheets Saving (UPDATED)
 # -----------------------------
-from google.oauth2.service_account import Credentials
-import gspread
-from datetime import datetime
-
 def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=None):
 
-    # === SERVICE ACCOUNT JSON (copy exactly from your .json file) ===
     SERVICE_ACCOUNT_INFO = {
   "type": "service_account",
   "project_id": "riasec-responses",
@@ -319,25 +299,17 @@ def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=
   "universe_domain": "googleapis.com"
 }
 
+    SCOPE = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
 
-    # === GOOGLE SHEET CONFIG ===
-    SCOPE = ["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"]
     SHEET_NAME = "R1"
 
-    # Use the existing constants from your app
-    global RIASEC_ORDER, NEW_APTITUDES
-
-    # === AUTHENTICATE ===
     creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPE)
     client = gspread.authorize(creds)
+    sheet = client.open(SHEET_NAME).sheet1
 
-    try:
-        sheet = client.open(SHEET_NAME).sheet1
-    except Exception as e:
-        print("ERROR opening Google Sheet:", e)
-        raise
-
-    # === BUILD ROW ===
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         user_info.get('name', 'Anonymous'),
@@ -346,11 +318,9 @@ def save_to_google_sheet(riasec_code, riasec_scores, aptitude_scores, user_info=
         riasec_code
     ]
 
-    # Add RIASEC Scores
     for code in RIASEC_ORDER:
         row.append(riasec_scores.get(code, 0))
 
-    # Add Aptitude Scores
     for apt in NEW_APTITUDES:
         row.append(aptitude_scores.get(apt, 0))
 
@@ -388,9 +358,6 @@ def results():
 
 @app.route('/save_results', methods=['POST'])
 def save_results():
-    if 'last_riasec_code' not in session:
-        return redirect(url_for('results'))
-
     try:
         save_to_google_sheet(
             session['last_riasec_code'],
@@ -399,8 +366,6 @@ def save_results():
             session.get('user_info')
         )
         return jsonify({'success': True, 'msg': 'Results saved successfully!'})
-    except FileNotFoundError:
-        return jsonify({'success': False, 'msg': 'Service account file missing. Results not saved.'})
     except Exception as e:
         return jsonify({'success': False, 'msg': str(e)})
 
