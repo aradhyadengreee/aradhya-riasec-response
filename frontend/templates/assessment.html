@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">RIASEC Personality Assessment</h3>
+                <p class="mb-0 text-light" id="phaseIndicator">Main Questions</p>
+            </div>
+            <div class="card-body">
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span id="progressText">Question 1 of 5</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress">
+                        <div id="progressBar" class="progress-bar" role="progressbar" 
+                             style="width: 0%"
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <!-- Current Question -->
+                <div class="question-card fade-in">
+                    <h4 id="questionText" class="mb-4">Loading question...</h4>
+                    
+                    <div id="optionsContainer">
+                        <div class="text-center py-4">
+                            <div class="loading-spinner mx-auto mb-3"></div>
+                            <p>Loading question...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-outline-secondary" onclick="previousQuestion()" id="prevButton" disabled>
+                        Previous
+                    </button>
+                    <button id="nextButton" class="btn btn-primary" onclick="nextQuestion()" disabled>
+                        Next Question
+                    </button>
+                    <button id="submitButton" class="btn btn-success" onclick="submitAllAnswers()" style="display: none;">
+                        Submit Assessment
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Live Scores Display -->
+        <div class="card mt-4" id="scoresCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0">Current Scores</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>RIASEC Scores</h6>
+                        <div id="riasecScoresDisplay"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Current Code: <span id="currentCode">---</span></h6>
+                        <div id="aptitudeScoresDisplay"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentQuestion = null;
+let questions = [];
+let tieBreakerQuestions = [];
+let answeredQuestions = new Set();
+let currentPhase = 'main';
+
+// Initialize assessment
+async function initializeAssessment() {
+    try {
+        // Start assessment session
+        await fetch('/api/riasec/start-assessment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        // Load main questions
+        const response = await fetch('/api/riasec/get-questions');
+        const result = await response.json();
+        
+        if (result.success) {
+            questions = result.questions;
+            loadQuestion(1);
+            updateScoresDisplay();
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error initializing assessment:', error);
+        showError('Failed to start assessment: ' + error.message);
+    }
+}
+
+async function loadQuestion(questionNumber) {
+    try {
+        // If we have a specific question number, load it
+        if (questionNumber <= questions.length) {
+            currentQuestion = questions[questionNumber - 1];
+            currentPhase = 'main';
+        } else {
+            // This would be a tie-breaker question - handled by submitAnswer
+            return;
+        }
+
+        updateQuestionDisplay();
+        updateProgress();
+        
+    } catch (error) {
+        console.error('Error loading question:', error);
+        showError('Failed to load question');
+    }
+}
+
+function updateQuestionDisplay() {
+    if (!currentQuestion) return;
+
+    document.getElementById('questionText').textContent = 
+        `Question ${currentQuestion.number}: ${currentQuestion.text || currentQuestion.question}`;
+    
+    const optionsContainer = document.getElementById('optionsContainer');
+    const options = currentQuestion.options;
+    
+    let optionsHtml = '';
+    for (const [key, option] of Object.entries(options)) {
+        optionsHtml += `
+            <div class="option-card" onclick="selectOption('${key}')">
+                <input type="radio" name="answer" value="${key}" class="option-input">
+                <label>${option.text}</label>
+            </div>
+        `;
+    }
+    
+    optionsContainer.innerHTML = optionsHtml;
+    
+    // Update phase indicator
+    const phaseIndicator = document.getElementById('phaseIndicator');
+    if (currentPhase === 'tie_breaker') {
+        phaseIndicator.textContent = 'Tie-Breaker Questions';
+        phaseIndicator.className = 'mb-0 text-warning';
+    } else {
+        phaseIndicator.textContent = 'Main Questions';
+        phaseIndicator.className = 'mb-0 text-light';
+    }
+    
+    // Enable next button only if an option is selected
+    document.getElementById('nextButton').disabled = true;
+}
+
+function selectOption(optionKey) {
+    // Remove "selected" class from all cards
+    document.querySelectorAll('.option-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+
+    // Add "selected" class to clicked card
+    const selectedCard = event.currentTarget;
+    selectedCard.classList.add('selected');
+
+    // Mark the radio button as checked
+    const input = selectedCard.querySelector('input[type="radio"]');
+    if (input) {
+        input.checked = true;
+    }
+
+    // Enable Next button
+    document.getElementById('nextButton').disabled = false;
+}
+
+
+async function nextQuestion() {
+    if (!currentQuestion) return;
+
+    const selectedOption = document.querySelector('input[name="answer"]:checked');
+    if (!selectedOption) {
+        showError('Please select an option');
+        return;
+    }
+
+    try {
+        // Submit answer
+        const response = await fetch('/api/riasec/submit-answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question_number: currentQuestion.number,
+                answer: selectedOption.value
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            answeredQuestions.add(currentQuestion.number);
+            
+            if (result.next_question) {
+                currentQuestion = result.next_question;
+                currentPhase = result.current_phase;
+                updateQuestionDisplay();
+                updateProgress();
+                updateScoresDisplay();
+            } else {
+                // No more questions - ready to submit
+                showSubmitButton();
+            }
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error submitting answer:', error);
+        showError('Failed to submit answer: ' + error.message);
+    }
+}
+
+function previousQuestion() {
+    // Implementation for going back to previous question
+    // You'll need to track question history for this
+    showError('Previous question functionality not implemented yet');
+}
+
+function showSubmitButton() {
+    document.getElementById('nextButton').style.display = 'none';
+    document.getElementById('submitButton').style.display = 'block';
+    document.getElementById('progressText').textContent = 'Assessment Complete!';
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('progressPercent').textContent = '100%';
+}
+
+async function submitAllAnswers() {
+    try {
+        const response = await fetch('/api/riasec/submit-test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('Assessment completed successfully!');
+            setTimeout(() => {
+                window.location.href = '/results';
+            }, 1000);
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error submitting assessment:', error);
+        showError('Failed to submit assessment: ' + error.message);
+    }
+}
+
+async function updateScoresDisplay() {
+    try {
+        const response = await fetch('/api/riasec/current-scores');
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('scoresCard').style.display = 'block';
+            document.getElementById('currentCode').textContent = result.riasec_code || '---';
+            
+            // Display RIASEC scores
+            let riasecHtml = '';
+            for (const [code, score] of Object.entries(result.riasec_scores)) {
+                riasecHtml += `<div>${code}: ${score}</div>`;
+            }
+            document.getElementById('riasecScoresDisplay').innerHTML = riasecHtml;
+            
+            // Display aptitude scores
+            let aptitudeHtml = '';
+            for (const [aptitude, score] of Object.entries(result.aptitude_scores)) {
+                aptitudeHtml += `<div>${aptitude}: ${score}</div>`;
+            }
+            document.getElementById('aptitudeScoresDisplay').innerHTML = aptitudeHtml;
+        }
+    } catch (error) {
+        console.error('Error updating scores:', error);
+    }
+}
+
+function updateProgress() {
+    if (!currentQuestion) return;
+
+    const totalQuestions = questions.length + tieBreakerQuestions.length;
+    const currentNumber = currentQuestion.number;
+    const progress = (currentNumber / totalQuestions) * 100;
+
+    document.getElementById('progressBar').style.width = `${progress}%`;
+    document.getElementById('progressBar').setAttribute('aria-valuenow', progress);
+    document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
+    document.getElementById('progressText').textContent = `Question ${currentNumber} of ${totalQuestions}`;
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', initializeAssessment);
+</script>
+{% endblock %}

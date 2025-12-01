@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3>Tell Us About Yourself</h3>
+            </div>
+            <div class="card-body">
+                <form id="userInfoForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="education_level" class="form-label">Education Level</label>
+                        <select class="form-select" id="education_level" name="education_level" required>
+                            <option value="">Select Education Level</option>
+                            <option value="High School">High School</option>
+                            <option value="Diploma">Diploma/Certificate</option>
+                            <option value="Bachelor">Bachelor's Degree</option>
+                            <option value="Master">Master's Degree</option>
+                            <option value="PhD">PhD/Doctorate</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="experience_years" class="form-label">Years of Experience</label>
+                        <input type="number" class="form-control" id="experience_years" name="experience_years" min="0" max="50" value="0">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="current_field" class="form-label">Current Field/Industry</label>
+                        <input type="text" class="form-control" id="current_field" name="current_field" placeholder="e.g., Technology, Healthcare, Education">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Continue to Interests</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('userInfoForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const userData = Object.fromEntries(formData);
+    userData.experience_years = parseInt(userData.experience_years);
+    
+    try {
+        const response = await fetch('/api/user/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.href = '/interests';
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error creating user: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

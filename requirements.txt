@@ -1,0 +1,11 @@
+Flask
+pymongo
+python-dotenv
+pandas
+numpy
+scikit-learn
+sentence-transformers
+chromadb
+openpyxl
+Werkzeug
+gunicorn

@@ -1,0 +1,789 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <!-- User Profile Summary -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Your Profile</h5>
+            </div>
+            <div class="card-body">
+                <div id="userProfile">
+                    <div class="text-center py-3">
+                        <div class="loading-spinner mx-auto"></div>
+                        <p class="mt-2">Loading profile...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIASEC Results -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Your RIASEC Code</h5>
+            </div>
+            <div class="card-body text-center">
+                <div id="riasecCode" class="riasec-code">---</div>
+                <div id="riasecScores" class="riasec-scores">
+                    <!-- Scores will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Your Top Aptitudes -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Your Top Aptitudes</h5>
+            </div>
+            <div class="card-body">
+                <div id="aptitudeScores">
+                    <div class="text-center py-2">
+                        <div class="loading-spinner mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interest Clusters -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Your Interest Clusters</h5>
+            </div>
+            <div class="card-body">
+                <div id="interestClusters">
+                    <div class="text-center py-2">
+                        <div class="loading-spinner mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Match Criteria Weights -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Match Criteria</h5>
+            </div>
+            <div class="card-body">
+                <div class="weight-info">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Interest Cluster Match</span>
+                        <span class="badge bg-primary">40%</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>RIASEC Personality Match</span>
+                        <span class="badge bg-success">30%</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Aptitude Alignment</span>
+                        <span class="badge bg-warning">20%</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Job Description Match</span>
+                        <span class="badge bg-info">10%</span>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>Total</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Recommendations -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Career Recommendations</h5>
+                <button id="generateRecommendations" class="btn btn-primary" onclick="generateRecommendations()">
+                    <i class="fas fa-search me-1"></i>Get Recommendations
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="recommendationsContainer">
+                    <div class="text-center py-5">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Ready to Discover Your Career Matches</h5>
+                        <p class="text-muted">Click the button above to generate personalized career recommendations based on:</p>
+                        <div class="row mt-3">
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="p-2 border rounded">
+                                    <i class="fas fa-heart text-danger mb-1"></i>
+                                    <small>Interest Cluster</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="p-2 border rounded">
+                                    <i class="fas fa-user text-primary mb-1"></i>
+                                    <small>RIASEC Code</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="p-2 border rounded">
+                                    <i class="fas fa-brain text-warning mb-1"></i>
+                                    <small>Aptitude Scores</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="p-2 border rounded">
+                                    <i class="fas fa-file-alt text-info mb-1"></i>
+                                    <small>Job Description</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Career Counseling Tips -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Next Steps & Career Counseling</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-brain text-warning me-2"></i>Aptitude Development</h6>
+                        <p class="small">Focus on improving your top aptitudes through targeted exercises and practice.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-graduation-cap text-primary me-2"></i>Skill Development</h6>
+                        <p class="small">Identify key skills needed for your recommended careers and explore learning pathways.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-briefcase text-primary me-2"></i>Career Exploration</h6>
+                        <p class="small">Research each recommended career to understand daily tasks and requirements.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-network-wired text-primary me-2"></i>Networking</h6>
+                        <p class="small">Connect with professionals in fields that interest you to learn from their experiences.</p>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary me-2" onclick="downloadResults()">
+                        <i class="fas fa-download me-1"></i>Download Results
+                    </button>
+                    <button class="btn btn-outline-secondary me-2" onclick="showMatchBreakdown()">
+                        <i class="fas fa-chart-pie me-1"></i>Match Breakdown
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="restartAssessment()">
+                        <i class="fas fa-redo me-1"></i>Retake Assessment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Match Breakdown Modal -->
+<div class="modal fade" id="matchBreakdownModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Match Score Breakdown</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="matchBreakdownContent">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.riasec-code {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+.riasec-scores {
+    margin-top: 15px;
+}
+
+.riasec-score {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.riasec-letter {
+    width: 30px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.riasec-bar {
+    flex-grow: 1;
+    height: 20px;
+    background-color: #ecf0f1;
+    border-radius: 10px;
+    margin: 0 10px;
+    overflow: hidden;
+}
+
+.riasec-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    border-radius: 10px;
+}
+
+.riasec-value {
+    width: 30px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.job-card {
+    border-left: 4px solid #3498db;
+    transition: transform 0.2s;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.match-percentage {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2ecc71;
+    min-width: 60px;
+}
+
+.aptitude-progress {
+    height: 8px;
+    margin-bottom: 5px;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.weight-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.aptitude-chip {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    margin: 2px;
+    display: inline-block;
+}
+
+.aptitude-match {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.match-score-breakdown {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+.score-breakdown-item {
+    margin-bottom: 10px;
+}
+
+.score-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.score-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.score-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+</style>
+
+<script>
+// Load user profile and assessment results
+async function loadUserProfile() {
+    try {
+        // Load user profile
+        const profileResponse = await fetch('/api/user/profile');
+        const profileResult = await profileResponse.json();
+        
+        if (profileResult.success) {
+            const user = profileResult.user;
+            
+            // Display user profile
+            document.getElementById('userProfile').innerHTML = `
+                <p><strong>Name:</strong> ${user.name}</p>
+                <p><strong>Education:</strong> ${user.education_level}</p>
+                <p><strong>Experience:</strong> ${user.experience_years} years</p>
+                <p><strong>Field:</strong> ${user.current_field || 'Not specified'}</p>
+            `;
+
+            // Display RIASEC results
+            if (user.riasec_code) {
+                document.getElementById('riasecCode').textContent = user.riasec_code;
+                
+                // Display RIASEC scores
+                let scoresHtml = '';
+                const riasecTypes = ['R', 'I', 'A', 'S', 'E', 'C'];
+                riasecTypes.forEach(type => {
+                    const score = user.riasec_scores && user.riasec_scores[type] ? user.riasec_scores[type] : 0;
+                    const maxScore = user.riasec_scores ? Math.max(...Object.values(user.riasec_scores)) : 0;
+                    const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+                    
+                    scoresHtml += `
+                        <div class="riasec-score">
+                            <div class="riasec-letter">${type}</div>
+                            <div class="riasec-bar">
+                                <div class="riasec-fill" style="width: ${percentage}%"></div>
+                            </div>
+                            <div class="riasec-value">${score}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('riasecScores').innerHTML = scoresHtml;
+            }
+
+            // Display aptitude scores
+            if (user.aptitude_percentiles && Object.keys(user.aptitude_percentiles).length > 0) {
+                // Sort aptitudes by score
+                const sortedAptitudes = Object.entries(user.aptitude_percentiles)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5); // Show top 5
+                
+                let aptitudeHtml = '';
+                sortedAptitudes.forEach(([name, score]) => {
+                    aptitudeHtml += `
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>${name}</small>
+                                <small class="fw-bold">${score}%</small>
+                            </div>
+                            <div class="progress aptitude-progress">
+                                <div class="progress-bar bg-warning" role="progressbar" 
+                                     style="width: ${score}%" 
+                                     aria-valuenow="${score}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Add top 3 aptitudes as chips
+                const top3Aptitudes = sortedAptitudes.slice(0, 3);
+                aptitudeHtml += `
+                    <div class="mt-3">
+                        <small class="text-muted">Your Top Aptitudes:</small>
+                        <div class="mt-1">
+                            ${top3Aptitudes.map(([name, score]) => `
+                                <span class="aptitude-chip">
+                                    ${name}: ${score}%
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('aptitudeScores').innerHTML = aptitudeHtml;
+            } else {
+                document.getElementById('aptitudeScores').innerHTML = 
+                    '<p class="text-muted">No aptitude scores available</p>';
+            }
+
+            // Display interest clusters
+            if (user.interests && user.interests.length > 0) {
+                document.getElementById('interestClusters').innerHTML = 
+                    user.interests.map(interest => `
+                        <span class="badge bg-primary me-1 mb-1">${interest}</span>
+                    `).join('');
+            } else {
+                document.getElementById('interestClusters').innerHTML = 
+                    '<p class="text-muted">No interests selected</p>';
+            }
+        } else {
+            throw new Error(profileResult.error || 'Failed to load profile');
+        }
+
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        showError('Failed to load profile information');
+        
+        // Show default state
+        document.getElementById('userProfile').innerHTML = 
+            '<p class="text-muted">Profile information not available</p>';
+        document.getElementById('aptitudeScores').innerHTML = 
+            '<p class="text-muted">Aptitude information not available</p>';
+        document.getElementById('interestClusters').innerHTML = 
+            '<p class="text-muted">Interest information not available</p>';
+    }
+}
+
+async function generateRecommendations() {
+    try {
+        const button = document.getElementById('generateRecommendations');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/recommendations/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayRecommendations(result.recommendations, result.user_info);
+            showSuccess('Recommendations generated successfully!');
+        } else {
+            throw new Error(result.error || 'Failed to generate recommendations');
+        }
+    } catch (error) {
+        console.error('Error generating recommendations:', error);
+        showError('Failed to generate recommendations: ' + error.message);
+        
+        // Show error in recommendations container
+        document.getElementById('recommendationsContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Failed to generate recommendations. Please try again.
+                <p class="small mt-2">${error.message}</p>
+            </div>
+        `;
+    } finally {
+        const button = document.getElementById('generateRecommendations');
+        button.innerHTML = '<i class="fas fa-search me-1"></i>Get Recommendations';
+        button.disabled = false;
+    }
+}
+
+function displayRecommendations(recommendations, userInfo) {
+    const container = document.getElementById('recommendationsContainer');
+    
+    if (!recommendations || recommendations.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                No recommendations found. Please try adjusting your profile or contact career counseling.
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = recommendations.map((job, index) => {
+        // Calculate breakdown percentages (simplified)
+        const breakdown = {
+            interests: Math.round(job.match_percentage * 0.4),
+            riasec: Math.round(job.match_percentage * 0.3),
+            aptitude: Math.round(job.match_percentage * 0.2),
+            description: Math.round(job.match_percentage * 0.1)
+        };
+        
+        // Format aptitude matches
+        let aptitudeMatches = '';
+        if (job.user_top_aptitudes && job.user_top_aptitudes.length > 0) {
+            aptitudeMatches = `
+                <div class="mt-2">
+                    <small class="text-muted">Your Top Aptitudes:</small>
+                    <div class="mt-1">
+                        ${job.user_top_aptitudes.map(apt => {
+                            const jobAptitudeScore = job.aptitude_scores && job.aptitude_scores[apt.name] 
+                                ? job.aptitude_scores[apt.name] 
+                                : 0;
+                            const matchLevel = Math.min(apt.score, jobAptitudeScore);
+                            const matchClass = matchLevel > 70 ? 'aptitude-match' : '';
+                            return `
+                                <span class="aptitude-chip ${matchClass}" 
+                                      title="You: ${apt.score}% | Job: ${jobAptitudeScore}%">
+                                    ${apt.name} (${matchLevel}% match)
+                                </span>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Format skills
+        let skillsHtml = '';
+        if (job.primary_skills) {
+            const skills = typeof job.primary_skills === 'string' 
+                ? job.primary_skills.split(',').map(s => s.trim())
+                : job.primary_skills;
+            
+            if (skills.length > 0) {
+                skillsHtml = `
+                    <div class="mt-3">
+                        <strong><i class="fas fa-tools me-1"></i>Key Skills:</strong>
+                        <div class="skills-list mt-1">
+                            ${skills.map(skill => 
+                                `<span class="badge bg-light text-dark me-1 mb-1">${skill}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        return `
+            <div class="card job-card fade-in mb-4" data-job-id="${job.job_id}" 
+                 style="animation-delay: ${index * 0.1}s">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">${job.job_title}</h5>
+                            <h6 class="card-subtitle text-muted mb-2">
+                                <i class="fas fa-folder me-1"></i>${job.family_title}
+                            </h6>
+                            <div class="badge bg-secondary">
+                                <i class="fas fa-user-tag me-1"></i>RIASEC: ${job.riasec_code}
+                            </div>
+                        </div>
+                        <div class="match-percentage text-center">
+                            <div class="fw-bold" style="font-size: 2rem">${job.match_percentage}%</div>
+                            <small class="text-muted">Match Score</small>
+                            <button class="btn btn-sm btn-outline-info mt-1" 
+                                    onclick="showMatchBreakdownForJob(${index}, ${job.match_percentage})">
+                                <i class="fas fa-chart-bar"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text">${job.job_description || 'No description available.'}</p>
+                    
+                    ${aptitudeMatches}
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                <strong>Salary Range:</strong> ${job.salary_range || 'Not specified'}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-chart-line text-primary me-2"></i>
+                                <strong>Growth Projection:</strong> 
+                                <span class="badge ${job.growth_projection && job.growth_projection.toLowerCase().includes('high') ? 'bg-success' : 'bg-warning'}">
+                                    ${job.growth_projection || 'Moderate'}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-bullseye text-danger me-2"></i>
+                                <strong>Market Demand:</strong> 
+                                <span class="badge ${job.market_demand === 'High' ? 'bg-success' : job.market_demand === 'Medium' ? 'bg-warning' : 'bg-secondary'}">
+                                    ${job.market_demand || 'Medium'}
+                                </span>
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-graduation-cap text-info me-2"></i>
+                                <strong>Learning Path:</strong> ${job.learning_pathway ? 'Available' : 'Not specified'}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    ${skillsHtml}
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-lightbulb text-warning me-1"></i>
+                            <strong>Why this match:</strong> ${job.reasoning || 'Good career match based on your personality, interests, and aptitudes.'}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showMatchBreakdown() {
+    const recommendations = document.querySelectorAll('.job-card');
+    if (recommendations.length === 0) {
+        showInfo('Please generate recommendations first');
+        return;
+    }
+    
+    // Show breakdown for the first job
+    showMatchBreakdownForJob(0);
+}
+
+function showMatchBreakdownForJob(jobIndex, matchPercentage) {
+    // Get the job element
+    const jobCards = document.querySelectorAll('.job-card');
+    if (jobIndex >= jobCards.length) return;
+    
+    const jobCard = jobCards[jobIndex];
+    const jobTitle = jobCard.querySelector('.card-title').textContent;
+    
+    // Calculate breakdown (simplified - in real app, you'd have actual breakdown data)
+    const breakdown = {
+        interests: Math.round(matchPercentage * 0.4),
+        riasec: Math.round(matchPercentage * 0.3),
+        aptitude: Math.round(matchPercentage * 0.2),
+        description: Math.round(matchPercentage * 0.1)
+    };
+    
+    const colors = {
+        interests: '#3498db',
+        riasec: '#2ecc71',
+        aptitude: '#f39c12',
+        description: '#9b59b6'
+    };
+    
+    const labels = {
+        interests: 'Interest Cluster Match',
+        riasec: 'RIASEC Personality Match',
+        aptitude: 'Aptitude Alignment',
+        description: 'Job Description Match'
+    };
+    
+    let breakdownHtml = `
+        <h6 class="mb-3">${jobTitle}</h6>
+        <div class="match-score-breakdown">
+            <h4 class="text-center mb-3">${matchPercentage}% Total Match</h4>
+    `;
+    
+    Object.entries(breakdown).forEach(([key, value]) => {
+        breakdownHtml += `
+            <div class="score-breakdown-item">
+                <div class="score-label">
+                    <span>${labels[key]}</span>
+                    <span>${value}%</span>
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill" style="width: ${value}%; background-color: ${colors[key]}"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    breakdownHtml += `
+            <hr class="my-3">
+            <div class="row text-center">
+                <div class="col-6">
+                    <small class="text-white-50">Match Algorithm</small>
+                    <div class="fw-bold">4-Factor Model</div>
+                </div>
+                <div class="col-6">
+                    <small class="text-white-50">Personalized</small>
+                    <div class="fw-bold">Based on Your Profile</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h6>How matches are calculated:</h6>
+            <ul class="small">
+                <li><strong>Interest Cluster (40%):</strong> Matches your selected interests with job interest clusters</li>
+                <li><strong>RIASEC Code (30%):</strong> Compares your personality type with job requirements</li>
+                <li><strong>Aptitude Alignment (20%):</strong> Matches your top 3 aptitudes with job aptitude scores</li>
+                <li><strong>Job Description (10%):</strong> Analyzes text similarity with your profile</li>
+            </ul>
+        </div>
+    `;
+    
+    document.getElementById('matchBreakdownContent').innerHTML = breakdownHtml;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('matchBreakdownModal'));
+    modal.show();
+}
+
+function downloadResults() {
+    showInfo('Download feature will be available soon!');
+    // In a real implementation, this would generate a PDF report with:
+    // 1. User profile
+    // 2. RIASEC results
+    // 3. Aptitude scores
+    // 4. Recommendations with match breakdown
+    // 5. Career counseling tips
+}
+
+function restartAssessment() {
+    if (confirm('Are you sure you want to retake the assessment? Your current results will be reset.')) {
+        fetch('/api/riasec/start-assessment', {
+            method: 'POST'
+        }).then(() => {
+            window.location.href = '/user-info';
+        }).catch(error => {
+            console.error('Error restarting assessment:', error);
+            showError('Failed to restart assessment');
+        });
+    }
+}
+
+// Utility functions
+function showSuccess(message) {
+    // You can implement a toast notification system here
+    alert('Success: ' + message);
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+}
+
+function showInfo(message) {
+    alert('Info: ' + message);
+}
+
+function setLoadingState(element, isLoading) {
+    if (isLoading) {
+        element.disabled = true;
+        element.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+    } else {
+        element.disabled = false;
+        element.innerHTML = '<i class="fas fa-search me-1"></i>Get Recommendations';
+    }
+}
+
+// Load profile when page loads
+document.addEventListener('DOMContentLoaded', loadUserProfile);
+</script>
+{% endblock %}

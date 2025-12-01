@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card">
+            <div class="card-body py-5">
+                <h1 class="display-4 mb-4">Career Counseling App</h1>
+                <p class="lead mb-4">
+                    Discover your ideal career path with our comprehensive RIASEC assessment 
+                    and personalized job recommendations.
+                </p>
+                
+                <div class="row mb-5">
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <i class="fas fa-user fa-3x text-primary mb-3"></i>
+                                <h5>Profile Setup</h5>
+                                <p class="text-muted">Tell us about your background, education, and experience</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <i class="fas fa-heart fa-3x text-primary mb-3"></i>
+                                <h5>Interest Clusters</h5>
+                                <p class="text-muted">Select your areas of interest from various career clusters</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <i class="fas fa-chart-bar fa-3x text-primary mb-3"></i>
+                                <h5>RIASEC Assessment</h5>
+                                <p class="text-muted">Complete our personality assessment to discover your RIASEC code</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <a href="{{ url_for('user_info') }}" class="btn btn-primary btn-lg px-5">
+                        Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

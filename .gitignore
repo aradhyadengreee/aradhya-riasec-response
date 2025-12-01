@@ -1,0 +1,88 @@
+# -------------------------
+# Python cache & compiled files
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+backend/**/__pycache__/
+backend/**/*.pyc
+
+# -------------------------
+# Ignore specific backend scripts
+# -------------------------
+backend/import_script.py
+backend/vector_embedding_service.py
+
+# -------------------------
+# Virtual environments
+# -------------------------
+venv/
+.env/
+.venv/
+
+# -------------------------
+# Environment & config files
+# -------------------------
+*.env
+*.env.local
+.env.*
+config.json
+secrets.json
+
+# -------------------------
+# OS-generated files
+# -------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -------------------------
+# IDE/editor-specific
+# -------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -------------------------
+# Logs
+# -------------------------
+*.log
+logs/
+backend/*.log
+
+# -------------------------
+# Data files
+# -------------------------
+# If careers_data.xlsx should NOT be committed, uncomment:
+# data/*.xlsx
+# (Currently allowed)
+
+# -------------------------
+# Bytecode / build / temp
+# -------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+__pypackages__/
+
+# -------------------------
+# Node / frontend (future-proof)
+# -------------------------
+node_modules/
+frontend/node_modules/
+*.cache/
+
+# -------------------------
+# Python-specific tooling
+# -------------------------
+coverage/
+htmlcov/
+.tox/
+.pypytest_cache/
+.mypy_cache/
+.pytype/
