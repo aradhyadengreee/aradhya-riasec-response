@@ -47,8 +47,10 @@ class MongoDB:
     def get_jobs_collection(self):
         return self.db.jobs
     
+    # In mongodb.py, update init_database method:
+
     def init_database(self, jobs_data=None):
-        """Initialize database with sample data"""
+        """Initialize database with sample data and vector indexes"""
         try:
             # Create indexes for better query performance
             self.db.users.create_index("user_id", unique=True)
@@ -57,24 +59,26 @@ class MongoDB:
             self.db.jobs.create_index("job_id", unique=True)
             self.db.jobs.create_index("riasec_code")
             self.db.jobs.create_index("primary_interest_cluster")
+            
+            # Create vector field indexes
+            self.db.jobs.create_index("interests_vector")
+            self.db.jobs.create_index("riasec_vector")
+            self.db.jobs.create_index("aptitude_vector")
+            
+            # Text index for fallback search
             self.db.jobs.create_index([("family_title", "text"), 
-                                      ("nco_title", "text"), 
-                                      ("primary_skills", "text"),
-                                      ("job_description", "text")])
+                                    ("nco_title", "text"), 
+                                    ("primary_skills", "text"),
+                                    ("job_description", "text")])
             
             # Create indexes for aptitude scores
             for apt in Config.APTITUDE_CATEGORIES:
-                self.db.jobs.create_index(f"aptitude_{apt}")
+                self.db.jobs.create_index(f"aptitude_scores.{apt}")
             
-            # If jobs data provided, insert it
-            if jobs_data is not None:
-                self.db.jobs.insert_many(jobs_data)
-                logger.info(f"Inserted {len(jobs_data)} jobs into database")
+            logger.info("✅ Database initialized with vector indexes")
             
-            logger.info("✅ Database initialized successfully with Atlas connection")
         except Exception as e:
             logger.error(f"❌ Database initialization failed: {e}")
             raise
-
 # Global instance
 mongo_db = MongoDB.get_instance()

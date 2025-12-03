@@ -2,6 +2,7 @@
 import os
 from copy import deepcopy
 from collections import defaultdict
+from itertools import permutations
 from questions.main_questions import QUESTIONS
 from questions.tie_breaker_questions import TIE_BREAKER_QUESTIONS
 
@@ -89,13 +90,136 @@ class RIASECService:
         }
 
         return percentiles
+    
     def get_top_three(self, scores_dict):
-        sorted_items = sorted(scores_dict.items(), key=lambda x: x[1], reverse=True)
+        """Get top 3 RIASEC codes by score"""
+        sorted_items = sorted(scores_dict.items(), key=lambda x: (-x[1], x[0]))
         return sorted_items[:3]
+    
+    def get_top_four(self, scores_dict):
+        """Get top 4 RIASEC codes by score"""
+        sorted_items = sorted(scores_dict.items(), key=lambda x: (-x[1], x[0]))
+        return sorted_items[:4]
 
     def generate_riasec_code(self, riasec_scores):
+        """Generate the standard 3-letter RIASEC code from scores"""
         top_three = self.get_top_three(riasec_scores)
         return ''.join([code for code, _ in top_three])
+    
+    def generate_riasec_permutations_for_matching(self, riasec_scores):
+        """
+        Generate all relevant RIASEC permutations for job matching.
+        
+        Rules:
+        1. Get top 4 letters from RIASEC scores (sorted by score)
+        2. Generate all possible permutations of:
+           - All 3-letter permutations of top 4 letters
+           - All 2-letter permutations of top 4 letters  
+           - All single letters from top 4
+        3. Exclude bottom 2 letters (5th and 6th)
+        4. Return as list of strings (codes) for matching
+        
+        Args:
+            riasec_scores (dict): RIASEC scores dictionary
+            
+        Returns:
+            list: List of RIASEC codes/permutations for job matching
+        """
+        # Sort letters by score (descending)
+        sorted_letters = sorted(
+            riasec_scores.items(), 
+            key=lambda x: (-x[1], x[0])  # Sort by score desc, then letter asc
+        )
+        
+        # Get top 4 letters
+        top_4_letters = [letter for letter, _ in sorted_letters[:4]]
+        
+        all_codes = set()  # Use set to avoid duplicates
+        
+        # Generate 3-letter permutations from top 4
+        for perm in permutations(top_4_letters, 3):
+            # Convert to string and add
+            code_str = ''.join(perm)
+            all_codes.add(code_str)
+        
+        # Generate 2-letter permutations from top 4
+        for perm in permutations(top_4_letters, 2):
+            code_str = ''.join(perm)
+            all_codes.add(code_str)
+        
+        # Add single letters
+        for letter in top_4_letters:
+            all_codes.add(letter)
+        
+        # Also add the original top 3 code for backward compatibility
+        top_3_code = self.generate_riasec_code(riasec_scores)
+        all_codes.add(top_3_code)
+        
+        return list(all_codes)
+    
+    def test_riasec_permutations(self, test_scores=None):
+        """
+        Test function to verify RIASEC permutation logic.
+        
+        Args:
+            test_scores (dict): Optional test scores. If not provided, uses example from requirements.
+            
+        Returns:
+            list: Generated permutations for verification
+        """
+        if test_scores is None:
+            # Example from requirements
+            test_scores = {
+                'I': 9,
+                'S': 7,
+                'R': 5,
+                'C': 4,
+                'A': 3,
+                'E': 2
+            }
+        
+        # Get top 4 letters
+        top_4 = self.get_top_four(test_scores)
+        print(f"Top 4 letters: {[letter for letter, _ in top_4]}")
+        
+        # Generate permutations
+        permutations = self.generate_riasec_permutations_for_matching(test_scores)
+        
+        print(f"\nTotal permutations: {len(permutations)}")
+        print("\nGenerated codes:")
+        
+        # Group by length for better readability
+        by_length = {}
+        for code in permutations:
+            length = len(code)
+            by_length.setdefault(length, []).append(code)
+        
+        for length in sorted(by_length.keys()):
+            print(f"\n{length}-letter codes ({len(by_length[length])}):")
+            # Sort alphabetically for readability
+            sorted_codes = sorted(by_length[length])
+            for i, code in enumerate(sorted_codes):
+                if i % 6 == 0 and i > 0:
+                    print()
+                print(f"  {code}", end=" ")
+        
+        # Verify no bottom 2 letters are included
+        sorted_all = sorted(test_scores.items(), key=lambda x: (-x[1], x[0]))
+        bottom_letters = [letter for letter, _ in sorted_all[4:]]  # 5th and 6th letters
+        
+        invalid_codes = []
+        for code in permutations:
+            for letter in bottom_letters:
+                if letter in code:
+                    invalid_codes.append(code)
+                    break
+        
+        if invalid_codes:
+            print(f"\n\n❌ ERROR: Codes containing bottom letters {bottom_letters}: {invalid_codes}")
+        else:
+            print(f"\n\n✅ SUCCESS: No codes contain bottom letters {bottom_letters}")
+        
+        return permutations
 
     # -------------------------
     # Tie-breaker logic
@@ -211,4 +335,3 @@ class RIASECService:
         if question.get('pair'):
             q['pair'] = question.get('pair')
         return q
-

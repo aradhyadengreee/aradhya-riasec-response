@@ -5,7 +5,7 @@ load_dotenv()
 
 EMBEDDING_MODEL = 'all-MiniLM-L6-v2'  # Same as ChromaDB
 EMBEDDING_DIMENSION = 384  # Dimension for all-MiniLM-L6-v2
-VECTOR_SEARCH_INDEX_NAME = 'career_vectors'
+VECTOR_SEARCH_INDEX_NAME = 'career_vectors_new'
 
 class Config:
     """Base configuration"""
@@ -23,11 +23,12 @@ class Config:
     SESSION_TYPE = 'filesystem'
     
     # Career Matching Weights
-    RIASEC_WEIGHT = 0.3  # Changed from 0.4 to 0.3
-    INTERESTS_WEIGHT = 0.4  # Changed from 0.2 to 0.4
-    APTITUDE_WEIGHT = 0.2  # NEW: For aptitude matching
-    TEXT_WEIGHT = 0.1  # Changed from 0.1 (remains same)
-    
+    RIASEC_EXACT_MATCH_WEIGHT = 0.35  # For exact RIASEC code match
+    RIASEC_PARTIAL_MATCH_WEIGHT = 0.15  # For partial RIASEC match
+    INTEREST_CLUSTER_EXACT_MATCH_WEIGHT = 0.25  # For exact interest cluster match
+    INTEREST_CLUSTER_SEMANTIC_WEIGHT = 0.15  # For semantic similarity
+    FIELD_MATCH_WEIGHT = 0.08  # For field relevance
+    APTITUDE_MATCH_WEIGHT = 0.02  # For aptitude match
     # Interest Clusters
     INTEREST_CLUSTERS = [
         "Engineering and Technical Skills",

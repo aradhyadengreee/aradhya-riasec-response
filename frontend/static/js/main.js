@@ -1,3 +1,4 @@
+// main.js (FIXED VERSION)
 // Main JavaScript for Career Counseling App
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -101,7 +102,14 @@ async function apiCall(url, method = 'GET', data = null) {
     
     try {
         const response = await fetch(url, options);
-        const result = await response.json();
+        
+        // Check if response is empty
+        const responseText = await response.text();
+        if (!responseText || responseText.trim() === '') {
+            throw new Error('Server returned empty response');
+        }
+        
+        const result = JSON.parse(responseText);
         
         if (!response.ok) {
             throw new Error(result.error || 'API request failed');
@@ -126,7 +134,11 @@ function showError(message) {
     
     // Add to page
     const container = document.querySelector('.container');
-    container.insertBefore(alertDiv, container.firstChild);
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+    } else {
+        document.body.insertBefore(alertDiv, document.body.firstChild);
+    }
     
     // Auto remove after 5 seconds
     setTimeout(() => {
@@ -147,7 +159,11 @@ function showSuccess(message) {
     
     // Add to page
     const container = document.querySelector('.container');
-    container.insertBefore(alertDiv, container.firstChild);
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+    } else {
+        document.body.insertBefore(alertDiv, document.body.firstChild);
+    }
     
     // Auto remove after 5 seconds
     setTimeout(() => {
@@ -162,7 +178,7 @@ function setLoadingState(button, isLoading) {
     if (isLoading) {
         button.disabled = true;
         const originalText = button.innerHTML;
-        button.innerHTML = '<span class="loading-spinner"></span> Loading...';
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Loading...';
         button.setAttribute('data-original-text', originalText);
     } else {
         button.disabled = false;
@@ -173,75 +189,10 @@ function setLoadingState(button, isLoading) {
     }
 }
 
-
-
-// Results page functions
-async function generateRecommendations() {
-    try {
-        const generateButton = document.getElementById('generateRecommendations');
-        if (generateButton) setLoadingState(generateButton, true);
-        
-        const result = await apiCall('/api/recommendations/generate', 'POST');
-        
-        displayRecommendations(result.recommendations);
-        showSuccess('Recommendations generated successfully!');
-        
-    } catch (error) {
-        showError('Failed to generate recommendations: ' + error.message);
-    } finally {
-        const generateButton = document.getElementById('generateRecommendations');
-        if (generateButton) setLoadingState(generateButton, false);
-    }
-}
-
-function displayRecommendations(recommendations) {
-    const container = document.getElementById('recommendationsContainer');
-    
-    if (!container) return;
-    
-    if (recommendations.length === 0) {
-        container.innerHTML = '<div class="alert alert-info">No recommendations found. Please try adjusting your profile.</div>';
-        return;
-    }
-    
-    container.innerHTML = recommendations.map(job => `
-        <div class="card job-card fade-in">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h5 class="card-title">${job.job_title}</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">${job.family_title}</h6>
-                    </div>
-                    <div class="match-percentage">${job.match_percentage}%</div>
-                </div>
-                
-                <p class="card-text">${job.job_description || 'No description available.'}</p>
-                
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <strong>RIASEC Code:</strong> ${job.riasec_code}<br>
-                        <strong>Salary Range:</strong> ${job.salary_range}<br>
-                        <strong>Market Demand:</strong> ${job.market_demand}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Growth Projection:</strong> ${job.growth_projection}<br>
-                        <strong>Learning Path:</strong> ${job.learning_pathway || 'Not specified'}
-                    </div>
-                </div>
-                
-                ${job.primary_skills && job.primary_skills.length > 0 ? `
-                <div class="mt-3">
-                    <strong>Key Skills:</strong>
-                    <ul class="skills-list">
-                        ${job.primary_skills.map(skill => `<li>${skill}</li>`).join('')}
-                    </ul>
-                </div>
-                ` : ''}
-                
-                <div class="mt-3">
-                    <small class="text-muted">${job.reasoning || 'Good match based on your profile and interests.'}</small>
-                </div>
-            </div>
-        </div>
-    `).join('');
+// Helper function to get color based on match percentage
+function getMatchColor(percentage) {
+    if (percentage >= 80) return '#2ecc71'; // Green
+    if (percentage >= 60) return '#3498db'; // Blue
+    if (percentage >= 40) return '#f39c12'; // Orange
+    return '#e74c3c'; // Red
 }

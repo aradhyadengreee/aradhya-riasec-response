@@ -1,4 +1,4 @@
-# models/user.py (update to store aptitude scores)
+# models/user.py (update to store aptitude scores and ensure RIASEC scores are saved)
 from datetime import datetime
 from database.mongodb import mongo_db
 
@@ -11,7 +11,7 @@ class User:
         self.experience_years = user_data.get('experience_years', 0)
         self.current_field = user_data.get('current_field')
         self.interests = user_data.get('interests', [])
-        self.riasec_scores = user_data.get('riasec_scores', {})
+        self.riasec_scores = user_data.get('riasec_scores', {})  # Ensure this is stored
         self.riasec_code = user_data.get('riasec_code', '')
         self.aptitude_percentiles = user_data.get('aptitude_percentiles', {})
         self.created_at = user_data.get('created_at', datetime.utcnow())
@@ -25,7 +25,7 @@ class User:
             'experience_years': self.experience_years,
             'current_field': self.current_field,
             'interests': self.interests,
-            'riasec_scores': self.riasec_scores,
+            'riasec_scores': self.riasec_scores,  # Ensure this is included
             'riasec_code': self.riasec_code,
             'aptitude_percentiles': self.aptitude_percentiles,
             'created_at': self.created_at
@@ -55,7 +55,7 @@ class User:
         """Update RIASEC test results and optionally store question-answer mapping and aptitude scores"""
         users_collection = mongo_db.get_users_collection()
 
-        self.riasec_scores = riasec_scores
+        self.riasec_scores = riasec_scores  # Ensure scores are stored
         self.riasec_code = riasec_code
 
         if aptitude_percentiles is not None:
@@ -63,7 +63,7 @@ class User:
             self.aptitude_percentiles = self._convert_aptitude_format(aptitude_percentiles)
 
         update_fields = {
-            "riasec_scores": riasec_scores,
+            "riasec_scores": riasec_scores,  # Ensure scores are saved
             "riasec_code": riasec_code
         }
         if answers is not None:
@@ -71,14 +71,17 @@ class User:
         if aptitude_percentiles is not None:
             update_fields["aptitude_percentiles"] = self._convert_aptitude_format(aptitude_percentiles)
 
-        print(f"Updating user {self.user_id} with RIASEC: {riasec_code}, scores: {riasec_scores}, aptitude: {aptitude_percentiles}, answers: {answers}")  # Debug
+        print(f"Updating user {self.user_id} with RIASEC:")
+        print(f"  Code: {riasec_code}")
+        print(f"  Scores: {riasec_scores}")
+        print(f"  Aptitude: {aptitude_percentiles}")
 
         result = users_collection.update_one(
             {"user_id": self.user_id},
             {"$set": update_fields}
         )
 
-        print(f"Update result: {result.modified_count} documents modified")  # Debug
+        print(f"Update result: {result.modified_count} documents modified")
     
     def _convert_aptitude_format(self, old_aptitudes):
         """Convert from old aptitude format to new format if needed"""

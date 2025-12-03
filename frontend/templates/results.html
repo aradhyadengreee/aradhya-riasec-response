@@ -1,3 +1,4 @@
+<!-- results.html (FIXED VERSION) -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -67,26 +68,30 @@
             <div class="card-body">
                 <div class="weight-info">
                     <div class="d-flex justify-content-between mb-2">
-                        <span>Interest Cluster Match</span>
-                        <span class="badge bg-primary">40%</span>
+                        <span>RIASEC Personality Match</span>
+                        <span class="badge bg-success">45%</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span>RIASEC Personality Match</span>
-                        <span class="badge bg-success">30%</span>
+                        <span>Interest Cluster Match</span>
+                        <span class="badge bg-primary">30%</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span>Aptitude Alignment</span>
-                        <span class="badge bg-warning">20%</span>
+                        <span class="badge bg-warning">15%</span>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mb-2">
                         <span>Job Description Match</span>
                         <span class="badge bg-info">10%</span>
                     </div>
                     <hr class="my-2">
                     <div class="d-flex justify-content-between fw-bold">
-                        <span>Total</span>
+                        <span>Total Weight</span>
                         <span>100%</span>
                     </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-filter me-1"></i>
+                        Jobs are first filtered by strict RIASEC compatibility, then scored.
+                    </small>
                 </div>
             </div>
         </div>
@@ -179,12 +184,35 @@
     </div>
 </div>
 
+<!-- Job Details Modal -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="jobDetailsContent">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveJobInterest()">
+                    <i class="fas fa-bookmark me-1"></i>Save Job
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Match Breakdown Modal -->
 <div class="modal fade" id="matchBreakdownModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Match Score Breakdown</h5>
+                <h5 class="modal-title">Match Breakdown</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -247,11 +275,12 @@
 .job-card {
     border-left: 4px solid #3498db;
     transition: transform 0.2s;
+    height: 100%;
 }
 
 .job-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 
 .match-percentage {
@@ -273,6 +302,17 @@
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .weight-info {
@@ -341,15 +381,44 @@
     height: 100%;
     border-radius: 4px;
 }
+
+.match-breakdown .progress {
+    background-color: #f0f0f0;
+    height: 8px;
+}
+
+.aptitude-requirements .progress-bar {
+    transition: width 0.5s ease;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.job-details .progress {
+    height: 6px;
+}
 </style>
 
 <script>
+// Global variables
+window.recommendationsList = [];
+
 // Load user profile and assessment results
 async function loadUserProfile() {
     try {
         // Load user profile
-        const profileResponse = await fetch('/api/user/profile');
-        const profileResult = await profileResponse.json();
+        const response = await fetch('/api/user/profile');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const profileResult = await response.json();
         
         if (profileResult.success) {
             const user = profileResult.user;
@@ -463,6 +532,7 @@ async function loadUserProfile() {
     }
 }
 
+// Generate recommendations function
 async function generateRecommendations() {
     try {
         const button = document.getElementById('generateRecommendations');
@@ -477,10 +547,20 @@ async function generateRecommendations() {
             }
         });
         
-        const result = await response.json();
+        // Check if response is empty
+        const responseText = await response.text();
+        if (!responseText || responseText.trim() === '') {
+            throw new Error('Server returned empty response');
+        }
+        
+        const result = JSON.parse(responseText);
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to generate recommendations');
+        }
         
         if (result.success) {
-            displayRecommendations(result.recommendations, result.user_info);
+            displayRecommendations(result);
             showSuccess('Recommendations generated successfully!');
         } else {
             throw new Error(result.error || 'Failed to generate recommendations');
@@ -504,143 +584,439 @@ async function generateRecommendations() {
     }
 }
 
-function displayRecommendations(recommendations, userInfo) {
+// Display recommendations function
+function displayRecommendations(recommendationsData) {
     const container = document.getElementById('recommendationsContainer');
     
-    if (!recommendations || recommendations.length === 0) {
-        container.innerHTML = `
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                No recommendations found. Please try adjusting your profile or contact career counseling.
-            </div>
-        `;
+    if (!container) return;
+    
+    // Check if we have the new strict RIASEC structure
+    if (!recommendationsData || !recommendationsData.success) {
+        if (recommendationsData && recommendationsData.error) {
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${recommendationsData.error}
+                </div>`;
+        } else {
+            container.innerHTML = '<div class="alert alert-info">No recommendations found. Please try adjusting your profile.</div>';
+        }
         return;
     }
     
-    container.innerHTML = recommendations.map((job, index) => {
-        // Calculate breakdown percentages (simplified)
-        const breakdown = {
-            interests: Math.round(job.match_percentage * 0.4),
-            riasec: Math.round(job.match_percentage * 0.3),
-            aptitude: Math.round(job.match_percentage * 0.2),
-            description: Math.round(job.match_percentage * 0.1)
-        };
+    const recommendationsList = recommendationsData.recommendations || [];
+    const filterStats = recommendationsData.filter_stats || {};
+    const userProfile = recommendationsData.user_profile || {};
+    
+    if (recommendationsList.length === 0) {
+        let message = 'No recommendations found. Please try adjusting your profile.';
+        if (filterStats.riasec_filtered === 0) {
+            message = 'No jobs match your RIASEC profile. Try expanding your interests or consider related fields.';
+        }
+        container.innerHTML = `<div class="alert alert-info">${message}</div>`;
+        return;
+    }
+    
+    // Display filter statistics
+    let statsHtml = '';
+    if (filterStats.total_jobs) {
+        statsHtml = `
+            <div class="alert alert-info mb-4">
+                <small class="d-block mb-1">
+                    <i class="fas fa-filter me-1"></i>
+                    Filtering Process:
+                </small>
+                <div class="row small">
+                    <div class="col-6 col-md-3">
+                        <strong>${filterStats.total_jobs}</strong> total jobs
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <strong>${filterStats.riasec_filtered}</strong> passed RIASEC filter
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <strong>${filterStats.interest_filtered}</strong> passed interest filter
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <strong>${filterStats.final_count}</strong> final matches
+                    </div>
+                </div>
+                ${filterStats.riasec_strategy ? 
+                    `<small class="d-block mt-1">
+                        <i class="fas fa-cog me-1"></i>
+                        RIASEC Strategy: ${filterStats.riasec_strategy}
+                    </small>` : ''}
+            </div>
+        `;
+    }
+    
+    // Display all jobs (no truncation)
+    const jobsHtml = recommendationsList.map((job, index) => {
+        // Add delay for animation
+        const delay = index * 0.05;
         
-        // Format aptitude matches
-        let aptitudeMatches = '';
-        if (job.user_top_aptitudes && job.user_top_aptitudes.length > 0) {
-            aptitudeMatches = `
+        // Format skills
+        let skillsHtml = '';
+        if (job.primary_skills && job.primary_skills.length > 0) {
+            const skills = Array.isArray(job.primary_skills) ? job.primary_skills : 
+                          [job.primary_skills];
+            
+            skillsHtml = `
                 <div class="mt-2">
-                    <small class="text-muted">Your Top Aptitudes:</small>
-                    <div class="mt-1">
-                        ${job.user_top_aptitudes.map(apt => {
-                            const jobAptitudeScore = job.aptitude_scores && job.aptitude_scores[apt.name] 
-                                ? job.aptitude_scores[apt.name] 
-                                : 0;
-                            const matchLevel = Math.min(apt.score, jobAptitudeScore);
-                            const matchClass = matchLevel > 70 ? 'aptitude-match' : '';
-                            return `
-                                <span class="aptitude-chip ${matchClass}" 
-                                      title="You: ${apt.score}% | Job: ${jobAptitudeScore}%">
-                                    ${apt.name} (${matchLevel}% match)
-                                </span>
-                            `;
-                        }).join('')}
+                    <small class="text-muted"><i class="fas fa-tools me-1"></i>Key Skills:</small>
+                    <div class="skills-list mt-1">
+                        ${skills.slice(0, 3).map(skill => 
+                            `<span class="badge bg-light text-dark me-1 mb-1">${skill.trim()}</span>`
+                        ).join('')}
+                        ${skills.length > 3 ? `<span class="badge bg-secondary">+${skills.length - 3} more</span>` : ''}
                     </div>
                 </div>
             `;
         }
         
-        // Format skills
-        let skillsHtml = '';
-        if (job.primary_skills) {
-            const skills = typeof job.primary_skills === 'string' 
-                ? job.primary_skills.split(',').map(s => s.trim())
-                : job.primary_skills;
-            
-            if (skills.length > 0) {
-                skillsHtml = `
-                    <div class="mt-3">
-                        <strong><i class="fas fa-tools me-1"></i>Key Skills:</strong>
-                        <div class="skills-list mt-1">
-                            ${skills.map(skill => 
-                                `<span class="badge bg-light text-dark me-1 mb-1">${skill}</span>`
-                            ).join('')}
+        // Interest cluster info
+        const clusterInfo = job.interest_clusters ? 
+            `<small class="d-block text-muted">
+                <i class="fas fa-tag me-1"></i>
+                ${job.interest_clusters.primary || ''}
+            </small>` : '';
+        
+        // Similarity breakdown
+        const breakdown = job.similarity_breakdown || {};
+        let breakdownHtml = '';
+        if (breakdown.riasec !== undefined) {
+            breakdownHtml = `
+                <div class="mt-3 pt-2 border-top">
+                    <small class="text-muted">Match Breakdown:</small>
+                    <div class="row mt-1 g-1">
+                        <div class="col-6">
+                            <small class="d-block">
+                                <i class="fas fa-user-tag text-success me-1"></i>
+                                RIASEC: ${breakdown.riasec}%
+                            </small>
                         </div>
+                        <div class="col-6">
+                            <small class="d-block">
+                                <i class="fas fa-heart text-primary me-1"></i>
+                                Interests: ${breakdown.interests}%
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="d-block">
+                                <i class="fas fa-brain text-warning me-1"></i>
+                                Aptitude: ${breakdown.aptitude}%
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="d-block">
+                                <i class="fas fa-file-alt text-info me-1"></i>
+                                Text: ${breakdown.text}%
+                            </small>
+                        </div>
+                        ${breakdown.field_boost > 0 ? `
+                            <div class="col-6">
+                                <small class="d-block">
+                                    <i class="fas fa-check-circle text-info me-1"></i>
+                                    Field: +${breakdown.field_boost}%
+                                </small>
+                            </div>
+                        ` : ''}
                     </div>
-                `;
-            }
+                </div>
+            `;
         }
         
         return `
-            <div class="card job-card fade-in mb-4" data-job-id="${job.job_id}" 
-                 style="animation-delay: ${index * 0.1}s">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="flex-grow-1">
-                            <h5 class="card-title mb-1">${job.job_title}</h5>
-                            <h6 class="card-subtitle text-muted mb-2">
-                                <i class="fas fa-folder me-1"></i>${job.family_title}
-                            </h6>
-                            <div class="badge bg-secondary">
-                                <i class="fas fa-user-tag me-1"></i>RIASEC: ${job.riasec_code}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card job-card h-100 fade-in" 
+                     style="border-left: 4px solid ${getMatchColor(job.match_percentage)}; animation-delay: ${delay}s">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div style="flex: 1;">
+                                <h6 class="card-title mb-1">${job.job_title || 'Unknown Job'}</h6>
+                                <p class="card-subtitle text-muted small mb-2">
+                                    <i class="fas fa-folder me-1"></i>${job.family_title || 'General'}
+                                </p>
+                            </div>
+                            <div class="match-percentage" style="min-width: 70px; text-align: right;">
+                                <span class="fw-bold" style="font-size: 1.8rem; color: ${getMatchColor(job.match_percentage)}">
+                                    ${job.match_percentage}%
+                                </span>
+                                <div class="text-muted small">Match</div>
                             </div>
                         </div>
-                        <div class="match-percentage text-center">
-                            <div class="fw-bold" style="font-size: 2rem">${job.match_percentage}%</div>
-                            <small class="text-muted">Match Score</small>
-                            <button class="btn btn-sm btn-outline-info mt-1" 
-                                    onclick="showMatchBreakdownForJob(${index}, ${job.match_percentage})">
-                                <i class="fas fa-chart-bar"></i>
+                        
+                        ${clusterInfo}
+                        
+                        <div class="mb-2">
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-user-tag me-1"></i>${job.riasec_code || 'N/A'}
+                            </span>
+                        </div>
+                        
+                        <p class="card-text small mb-3 flex-grow-1">
+                            ${job.job_description ? job.job_description.substring(0, 120) + '...' : 'No description available.'}
+                        </p>
+                        
+                        ${skillsHtml}
+                        
+                        ${breakdownHtml}
+                        
+                        <div class="mt-3 pt-2 border-top">
+                            <button class="btn btn-sm btn-outline-primary w-100" 
+                                    onclick="showJobDetails('${job.job_id}')">
+                                <i class="fas fa-info-circle me-1"></i>View Details
                             </button>
                         </div>
-                    </div>
-                    
-                    <p class="card-text">${job.job_description || 'No description available.'}</p>
-                    
-                    ${aptitudeMatches}
-                    
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <p class="mb-2">
-                                <i class="fas fa-money-bill-wave text-success me-2"></i>
-                                <strong>Salary Range:</strong> ${job.salary_range || 'Not specified'}
-                            </p>
-                            <p class="mb-2">
-                                <i class="fas fa-chart-line text-primary me-2"></i>
-                                <strong>Growth Projection:</strong> 
-                                <span class="badge ${job.growth_projection && job.growth_projection.toLowerCase().includes('high') ? 'bg-success' : 'bg-warning'}">
-                                    ${job.growth_projection || 'Moderate'}
-                                </span>
-                            </p>
-                        </div>
-                        <div class="col-md-6">
-                            <p class="mb-2">
-                                <i class="fas fa-bullseye text-danger me-2"></i>
-                                <strong>Market Demand:</strong> 
-                                <span class="badge ${job.market_demand === 'High' ? 'bg-success' : job.market_demand === 'Medium' ? 'bg-warning' : 'bg-secondary'}">
-                                    ${job.market_demand || 'Medium'}
-                                </span>
-                            </p>
-                            <p class="mb-2">
-                                <i class="fas fa-graduation-cap text-info me-2"></i>
-                                <strong>Learning Path:</strong> ${job.learning_pathway ? 'Available' : 'Not specified'}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    ${skillsHtml}
-                    
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            <i class="fas fa-lightbulb text-warning me-1"></i>
-                            <strong>Why this match:</strong> ${job.reasoning || 'Good career match based on your personality, interests, and aptitudes.'}
-                        </small>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
+    
+    container.innerHTML = statsHtml + `
+        <div class="alert alert-success mb-4">
+            <i class="fas fa-check-circle me-2"></i>
+            Found ${recommendationsList.length} jobs matching your profile with strict RIASEC-first filtering.
+            <small class="d-block mt-1">
+                <i class="fas fa-info-circle me-1"></i>
+                Jobs are filtered by RIASEC compatibility first, then scored by multiple factors.
+            </small>
+        </div>
+        
+        <div class="row">
+            ${jobsHtml}
+        </div>
+    `;
+    
+    // Store the recommendations data globally for use in showJobDetails
+    window.recommendationsList = recommendationsList;
+}
+
+// Helper function to get color based on match percentage
+function getMatchColor(percentage) {
+    if (percentage >= 80) return '#2ecc71'; // Green
+    if (percentage >= 60) return '#3498db'; // Blue
+    if (percentage >= 40) return '#f39c12'; // Orange
+    return '#e74c3c'; // Red
+}
+
+// Function to show job details modal
+function showJobDetails(jobId) {
+    // Find the job in our stored recommendations
+    const job = window.recommendationsList?.find(j => j.job_id === jobId);
+    
+    if (!job) {
+        showError('Job details not found');
+        return;
+    }
+    
+    // Generate detailed view for the new job structure
+    const detailsHtml = generateJobDetailsHtml(job);
+    
+    // Create and show modal
+    document.getElementById('jobDetailsContent').innerHTML = detailsHtml;
+    const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+    modal.show();
+}
+
+// Helper to generate job details HTML
+function generateJobDetailsHtml(job) {
+    // Format skills as list
+    const skillsList = Array.isArray(job.primary_skills) ? job.primary_skills : 
+                      typeof job.primary_skills === 'string' ? job.primary_skills.split(',').map(s => s.trim()) : [];
+    
+    // Format similarity breakdown
+    const breakdown = job.similarity_breakdown || {};
+    
+    // Format aptitude scores
+    let aptitudeHtml = '';
+    if (job.aptitude_scores && Object.keys(job.aptitude_scores).length > 0) {
+        const sortedAptitudes = Object.entries(job.aptitude_scores)
+            .sort((a, b) => b[1] - a[1]);
+        
+        aptitudeHtml = `
+            <div class="mb-4">
+                <h6><i class="fas fa-brain me-2"></i>Aptitude Requirements</h6>
+                ${sortedAptitudes.map(([name, score]) => `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <small>${name}</small>
+                            <small class="fw-bold">${score}%</small>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${score > 70 ? 'bg-success' : score > 40 ? 'bg-warning' : 'bg-secondary'}" 
+                                 style="width: ${score}%"></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Interest clusters
+    let interestClustersHtml = '';
+    if (job.interest_clusters) {
+        const clusters = job.interest_clusters;
+        interestClustersHtml = `
+            <h6><i class="fas fa-tags me-2"></i>Interest Clusters</h6>
+            <div class="mb-4">
+                <div class="row">
+                    ${clusters.primary ? `
+                        <div class="col-md-6 mb-2">
+                            <small class="d-block text-muted">Primary:</small>
+                            <span class="badge bg-primary">${clusters.primary}</span>
+                        </div>
+                    ` : ''}
+                    ${clusters.subcategories && clusters.subcategories.length > 0 ? `
+                        <div class="col-md-6 mb-2">
+                            <small class="d-block text-muted">Subcategories:</small>
+                            ${clusters.subcategories.slice(0, 2).map(sub => 
+                                `<span class="badge bg-secondary me-1 mb-1">${sub}</span>`
+                            ).join('')}
+                            ${clusters.subcategories.length > 2 ? 
+                                `<span class="badge bg-light text-dark">+${clusters.subcategories.length - 2} more</span>` : ''}
+                        </div>
+                    ` : ''}
+                    ${clusters.secondary && clusters.secondary.length > 0 ? `
+                        <div class="col-md-6 mb-2">
+                            <small class="d-block text-muted">Secondary:</small>
+                            ${clusters.secondary.slice(0, 2).map(sec => 
+                                `<span class="badge bg-info me-1 mb-1">${sec}</span>`
+                            ).join('')}
+                            ${clusters.secondary.length > 2 ? 
+                                `<span class="badge bg-light text-dark">+${clusters.secondary.length - 2} more</span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="job-details">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h4>${job.job_title || 'Unknown Job'}</h4>
+                    <h6 class="text-muted">${job.family_title || ''}</h6>
+                </div>
+                <div class="text-center">
+                    <div class="fw-bold" style="font-size: 2.5rem; color: ${getMatchColor(job.match_percentage)}">
+                        ${job.match_percentage}%
+                    </div>
+                    <small class="text-muted">Overall Match</small>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p class="mb-2">
+                        <strong><i class="fas fa-user-tag me-2 text-primary"></i>RIASEC Code:</strong> 
+                        <span class="badge bg-secondary">${job.riasec_code || 'N/A'}</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="fas fa-money-bill-wave me-2 text-success"></i>Salary Range:</strong> 
+                        ${job.salary_range || 'Not specified'}
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="fas fa-chart-line me-2 text-primary"></i>Weighted Score:</strong> 
+                        ${job.weighted_score || job.match_percentage}%
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2">
+                        <strong><i class="fas fa-bullseye me-2 text-danger"></i>Market Demand:</strong> 
+                        <span class="badge ${job.market_demand === 'High' ? 'bg-success' : job.market_demand === 'Medium' ? 'bg-warning' : 'bg-secondary'}">
+                            ${job.market_demand || 'Medium'}
+                        </span>
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="fas fa-chart-line me-2 text-primary"></i>Growth Projection:</strong> 
+                        ${job.growth_projection || 'Moderate'}
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="fas fa-graduation-cap me-2 text-info"></i>Learning Path:</strong> 
+                        ${job.learning_pathway ? 'Available' : 'Not specified'}
+                    </p>
+                </div>
+            </div>
+            
+            ${interestClustersHtml}
+            
+            <h6><i class="fas fa-file-alt me-2"></i>Job Description</h6>
+            <p class="mb-4">${job.job_description || 'No description available.'}</p>
+            
+            ${skillsList.length > 0 ? `
+                <h6><i class="fas fa-tools me-2"></i>Key Skills Required</h6>
+                <div class="mb-4">
+                    ${skillsList.map(skill => `<span class="badge bg-primary me-1 mb-1">${skill}</span>`).join('')}
+                </div>
+            ` : ''}
+            
+            <h6><i class="fas fa-chart-pie me-2"></i>Match Breakdown</h6>
+            <div class="match-breakdown mb-4">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <small class="d-block mb-1">RIASEC Match: <strong>${breakdown.riasec || 0}%</strong></small>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: ${breakdown.riasec || 0}%"></div>
+                        </div>
+                        <small class="text-muted">45% weight</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <small class="d-block mb-1">Interest Match: <strong>${breakdown.interests || 0}%</strong></small>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: ${breakdown.interests || 0}%"></div>
+                        </div>
+                        <small class="text-muted">30% weight</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <small class="d-block mb-1">Aptitude Match: <strong>${breakdown.aptitude || 0}%</strong></small>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: ${breakdown.aptitude || 0}%"></div>
+                        </div>
+                        <small class="text-muted">15% weight</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <small class="d-block mb-1">Text Match: <strong>${breakdown.text || 0}%</strong></small>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: ${breakdown.text || 0}%"></div>
+                        </div>
+                        <small class="text-muted">10% weight</small>
+                    </div>
+                    ${breakdown.field_boost > 0 ? `
+                        <div class="col-md-12 mb-3">
+                            <small class="d-block mb-1">Field Relevance Bonus: <strong>+${breakdown.field_boost}%</strong></small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" style="width: ${breakdown.field_boost || 0}%"></div>
+                            </div>
+                            <small class="text-muted">Added to final score</small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            ${aptitudeHtml}
+            
+            <div class="alert alert-info">
+                <h6><i class="fas fa-lightbulb me-2"></i>Why This Match</h6>
+                <p class="mb-0">${job.reasoning || 'This job aligns well with your personality, interests, and skills.'}</p>
+                <small class="d-block mt-2">
+                    <strong>Strict RIASEC Filtering:</strong> This job passed the strict RIASEC-first filtering process.
+                </small>
+            </div>
+            
+            ${job.final_score ? `
+                <div class="alert alert-primary">
+                    <h6><i class="fas fa-calculator me-2"></i>Final Score Calculation</h6>
+                    <p class="mb-0">
+                        Weighted: ${job.weighted_score || 'N/A'}% 
+                        ${breakdown.field_boost > 0 ? `+ Field Boost: ${breakdown.field_boost}% = ` : ''}
+                        <strong>${job.final_score * 100}% Final Score</strong>
+                    </p>
+                </div>
+            ` : ''}
+        </div>
+    `;
 }
 
 function showMatchBreakdown() {
@@ -650,66 +1026,75 @@ function showMatchBreakdown() {
         return;
     }
     
-    // Show breakdown for the first job
-    showMatchBreakdownForJob(0);
+    // Get the first job's match percentage
+    const firstJob = window.recommendationsList?.[0];
+    if (!firstJob) {
+        showInfo('No recommendations available');
+        return;
+    }
+    
+    showMatchBreakdownForJob(firstJob);
 }
 
-function showMatchBreakdownForJob(jobIndex, matchPercentage) {
-    // Get the job element
-    const jobCards = document.querySelectorAll('.job-card');
-    if (jobIndex >= jobCards.length) return;
-    
-    const jobCard = jobCards[jobIndex];
-    const jobTitle = jobCard.querySelector('.card-title').textContent;
-    
-    // Calculate breakdown (simplified - in real app, you'd have actual breakdown data)
-    const breakdown = {
-        interests: Math.round(matchPercentage * 0.4),
-        riasec: Math.round(matchPercentage * 0.3),
-        aptitude: Math.round(matchPercentage * 0.2),
-        description: Math.round(matchPercentage * 0.1)
-    };
+function showMatchBreakdownForJob(job) {
+    const breakdown = job.similarity_breakdown || {};
     
     const colors = {
-        interests: '#3498db',
         riasec: '#2ecc71',
+        interests: '#3498db',
         aptitude: '#f39c12',
-        description: '#9b59b6'
+        text: '#9b59b6'
     };
     
     const labels = {
-        interests: 'Interest Cluster Match',
-        riasec: 'RIASEC Personality Match',
-        aptitude: 'Aptitude Alignment',
-        description: 'Job Description Match'
+        riasec: 'RIASEC Personality Match (45%)',
+        interests: 'Interest Cluster Match (30%)',
+        aptitude: 'Aptitude Alignment (15%)',
+        text: 'Job Description Match (10%)'
     };
     
     let breakdownHtml = `
-        <h6 class="mb-3">${jobTitle}</h6>
+        <h6 class="mb-3">${job.job_title || 'Job Details'}</h6>
         <div class="match-score-breakdown">
-            <h4 class="text-center mb-3">${matchPercentage}% Total Match</h4>
+            <h4 class="text-center mb-3">${job.match_percentage}% Total Match</h4>
     `;
     
     Object.entries(breakdown).forEach(([key, value]) => {
+        if (key === 'field_boost') return; // Skip field boost for this view
+        
         breakdownHtml += `
             <div class="score-breakdown-item">
                 <div class="score-label">
-                    <span>${labels[key]}</span>
+                    <span>${labels[key] || key}</span>
                     <span>${value}%</span>
                 </div>
                 <div class="score-bar">
-                    <div class="score-fill" style="width: ${value}%; background-color: ${colors[key]}"></div>
+                    <div class="score-fill" style="width: ${value}%; background-color: ${colors[key] || '#3498db'}"></div>
                 </div>
             </div>
         `;
     });
     
+    if (breakdown.field_boost > 0) {
+        breakdownHtml += `
+            <div class="score-breakdown-item">
+                <div class="score-label">
+                    <span>Field Relevance Bonus</span>
+                    <span>+${breakdown.field_boost}%</span>
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill" style="width: ${breakdown.field_boost}%; background-color: #3498db"></div>
+                </div>
+            </div>
+        `;
+    }
+    
     breakdownHtml += `
             <hr class="my-3">
             <div class="row text-center">
                 <div class="col-6">
-                    <small class="text-white-50">Match Algorithm</small>
-                    <div class="fw-bold">4-Factor Model</div>
+                    <small class="text-white-50">Filtering Strategy</small>
+                    <div class="fw-bold">Strict RIASEC-First</div>
                 </div>
                 <div class="col-6">
                     <small class="text-white-50">Personalized</small>
@@ -721,10 +1106,12 @@ function showMatchBreakdownForJob(jobIndex, matchPercentage) {
         <div class="mt-4">
             <h6>How matches are calculated:</h6>
             <ul class="small">
-                <li><strong>Interest Cluster (40%):</strong> Matches your selected interests with job interest clusters</li>
-                <li><strong>RIASEC Code (30%):</strong> Compares your personality type with job requirements</li>
-                <li><strong>Aptitude Alignment (20%):</strong> Matches your top 3 aptitudes with job aptitude scores</li>
+                <li><strong>Strict RIASEC Filtering:</strong> Jobs are first filtered by strict RIASEC compatibility</li>
+                <li><strong>RIASEC Match (45%):</strong> Compares your top 3 RIASEC letters with job requirements</li>
+                <li><strong>Interest Cluster (30%):</strong> Semantic similarity between your interests and job clusters</li>
+                <li><strong>Aptitude Alignment (15%):</strong> Matches your aptitudes with job aptitude scores</li>
                 <li><strong>Job Description (10%):</strong> Analyzes text similarity with your profile</li>
+                <li><strong>Field Relevance Bonus:</strong> Additional boost for jobs related to your current field</li>
             </ul>
         </div>
     `;
@@ -738,12 +1125,6 @@ function showMatchBreakdownForJob(jobIndex, matchPercentage) {
 
 function downloadResults() {
     showInfo('Download feature will be available soon!');
-    // In a real implementation, this would generate a PDF report with:
-    // 1. User profile
-    // 2. RIASEC results
-    // 3. Aptitude scores
-    // 4. Recommendations with match breakdown
-    // 5. Career counseling tips
 }
 
 function restartAssessment() {
@@ -759,18 +1140,54 @@ function restartAssessment() {
     }
 }
 
+function saveJobInterest() {
+    showSuccess('Job saved to your interests!');
+}
+
 // Utility functions
 function showSuccess(message) {
-    // You can implement a toast notification system here
-    alert('Success: ' + message);
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
 }
 
 function showError(message) {
-    alert('Error: ' + message);
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
 }
 
 function showInfo(message) {
-    alert('Info: ' + message);
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-info alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <i class="fas fa-info-circle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
 }
 
 function setLoadingState(element, isLoading) {
@@ -784,6 +1201,17 @@ function setLoadingState(element, isLoading) {
 }
 
 // Load profile when page loads
-document.addEventListener('DOMContentLoaded', loadUserProfile);
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserProfile();
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Store global variables
+    window.recommendationsList = [];
+});
 </script>
 {% endblock %}

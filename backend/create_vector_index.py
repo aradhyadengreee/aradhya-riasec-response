@@ -51,7 +51,7 @@ def create_vector_index():
         # Drop existing vector index if it exists
         print("🗑️  Checking for existing vector index...")
         existing_indexes = jobs_collection.index_information()
-        vector_index_name = 'career_vectors'
+        vector_index_name = 'career_vectors_new'
         
         if vector_index_name in existing_indexes:
             print(f"⚠️  Existing vector index '{vector_index_name}' found. Dropping...")
