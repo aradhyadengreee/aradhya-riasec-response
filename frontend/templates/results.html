@@ -1,4 +1,4 @@
-<!-- results.html (FIXED VERSION) -->
+<!-- results.html (UPDATED FOR CLUSTER-WISE RECOMMENDATIONS) -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -402,6 +402,26 @@
 .job-details .progress {
     height: 6px;
 }
+
+.cluster-section {
+    margin-bottom: 40px;
+}
+
+.cluster-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.cluster-stats {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
 </style>
 
 <script>
@@ -584,13 +604,14 @@ async function generateRecommendations() {
     }
 }
 
-// Display recommendations function
+// Display recommendations function - UPDATED FOR CLUSTER-WISE
+// Display recommendations function - UPDATED FOR CLUSTER-WISE WITH FIELD BONUS
 function displayRecommendations(recommendationsData) {
     const container = document.getElementById('recommendationsContainer');
     
     if (!container) return;
     
-    // Check if we have the new strict RIASEC structure
+    // Check if we have the new cluster-wise structure
     if (!recommendationsData || !recommendationsData.success) {
         if (recommendationsData && recommendationsData.error) {
             container.innerHTML = `
@@ -604,11 +625,11 @@ function displayRecommendations(recommendationsData) {
         return;
     }
     
-    const recommendationsList = recommendationsData.recommendations || [];
+    // NEW: Check for cluster structure
+    const clusters = recommendationsData.recommendations || [];
     const filterStats = recommendationsData.filter_stats || {};
-    const userProfile = recommendationsData.user_profile || {};
     
-    if (recommendationsList.length === 0) {
+    if (clusters.length === 0) {
         let message = 'No recommendations found. Please try adjusting your profile.';
         if (filterStats.riasec_filtered === 0) {
             message = 'No jobs match your RIASEC profile. Try expanding your interests or consider related fields.';
@@ -617,179 +638,296 @@ function displayRecommendations(recommendationsData) {
         return;
     }
     
+    // Flatten all jobs for global storage
+    window.recommendationsList = [];
+    clusters.forEach(cluster => {
+        if (cluster.jobs && Array.isArray(cluster.jobs)) {
+            window.recommendationsList.push(...cluster.jobs);
+        }
+    });
+    
     // Display filter statistics
     let statsHtml = '';
     if (filterStats.total_jobs) {
         statsHtml = `
             <div class="alert alert-info mb-4">
-                <small class="d-block mb-1">
-                    <i class="fas fa-filter me-1"></i>
-                    Filtering Process:
-                </small>
-                <div class="row small">
-                    <div class="col-6 col-md-3">
-                        <strong>${filterStats.total_jobs}</strong> total jobs
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <strong>${filterStats.riasec_filtered}</strong> passed RIASEC filter
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <strong>${filterStats.interest_filtered}</strong> passed interest filter
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <strong>${filterStats.final_count}</strong> final matches
+                <div class="row">
+                    <div class="col-md-12">
+                        <small class="d-block mb-1">
+                            <i class="fas fa-filter me-1"></i>
+                            Filtering Process (Cluster-wise Results):
+                        </small>
+                        <div class="row small">
+                            <div class="col-6 col-md-3">
+                                <strong>${filterStats.total_jobs}</strong> total jobs
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <strong>${filterStats.riasec_filtered}</strong> passed RIASEC filter
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <strong>${filterStats.high_quality_matches || window.recommendationsList.length}</strong> high-quality matches (80%+)
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <strong>${filterStats.clusters_count || clusters.length}</strong> clusters found
+                            </div>
+                        </div>
+                        ${filterStats.riasec_strategy ? 
+                            `<small class="d-block mt-1">
+                                <i class="fas fa-cog me-1"></i>
+                                RIASEC Strategy: ${filterStats.riasec_strategy}
+                            </small>` : ''}
+                        ${filterStats.quality_threshold ? 
+                            `<small class="d-block mt-1">
+                                <i class="fas fa-star me-1"></i>
+                                Quality Threshold: ${filterStats.quality_threshold}%+ match
+                            </small>` : ''}
                     </div>
                 </div>
-                ${filterStats.riasec_strategy ? 
-                    `<small class="d-block mt-1">
-                        <i class="fas fa-cog me-1"></i>
-                        RIASEC Strategy: ${filterStats.riasec_strategy}
-                    </small>` : ''}
             </div>
         `;
     }
     
-    // Display all jobs (no truncation)
-    const jobsHtml = recommendationsList.map((job, index) => {
-        // Add delay for animation
-        const delay = index * 0.05;
+    // NEW: Display clusters and their jobs
+    let clustersHtml = '';
+    let clusterIndex = 0;
+    
+    clusters.forEach(cluster => {
+        const clusterName = cluster.cluster || 'Other';
+        const clusterJobs = cluster.jobs || [];
+        const clusterStats = cluster.cluster_stats || {};
         
-        // Format skills
-        let skillsHtml = '';
-        if (job.primary_skills && job.primary_skills.length > 0) {
-            const skills = Array.isArray(job.primary_skills) ? job.primary_skills : 
-                          [job.primary_skills];
-            
-            skillsHtml = `
-                <div class="mt-2">
-                    <small class="text-muted"><i class="fas fa-tools me-1"></i>Key Skills:</small>
-                    <div class="skills-list mt-1">
-                        ${skills.slice(0, 3).map(skill => 
-                            `<span class="badge bg-light text-dark me-1 mb-1">${skill.trim()}</span>`
-                        ).join('')}
-                        ${skills.length > 3 ? `<span class="badge bg-secondary">+${skills.length - 3} more</span>` : ''}
+        if (clusterJobs.length === 0) return;
+        
+        // Cluster header
+        clustersHtml += `
+            <div class="cluster-section mb-5 fade-in" style="animation-delay: ${clusterIndex * 0.1}s">
+                <div class="cluster-header mb-4" style="border-left-color: ${getClusterColor(clusterIndex)}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">
+                                <i class="fas fa-folder me-2" style="color: ${getClusterColor(clusterIndex)}"></i>
+                                ${clusterName}
+                            </h5>
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-briefcase me-1"></i>
+                                ${clusterJobs.length} job${clusterJobs.length > 1 ? 's' : ''} found
+                                ${clusterStats.average_match ? ` • Average match: ${clusterStats.average_match}%` : ''}
+                                ${clusterStats.top_match ? ` • Top match: ${clusterStats.top_match}%` : ''}
+                            </p>
+                        </div>
+                        <span class="badge" style="background-color: ${getClusterColor(clusterIndex)}; font-size: 1rem">
+                            ${clusterStats.total_jobs || clusterJobs.length} jobs
+                        </span>
                     </div>
                 </div>
-            `;
-        }
+                
+                <div class="row">
+        `;
         
-        // Interest cluster info
-        const clusterInfo = job.interest_clusters ? 
-            `<small class="d-block text-muted">
-                <i class="fas fa-tag me-1"></i>
-                ${job.interest_clusters.primary || ''}
-            </small>` : '';
-        
-        // Similarity breakdown
-        const breakdown = job.similarity_breakdown || {};
-        let breakdownHtml = '';
-        if (breakdown.riasec !== undefined) {
-            breakdownHtml = `
-                <div class="mt-3 pt-2 border-top">
-                    <small class="text-muted">Match Breakdown:</small>
-                    <div class="row mt-1 g-1">
-                        <div class="col-6">
-                            <small class="d-block">
-                                <i class="fas fa-user-tag text-success me-1"></i>
-                                RIASEC: ${breakdown.riasec}%
-                            </small>
+        // Jobs in this cluster
+        clusterJobs.forEach((job, jobIndex) => {
+            // Format skills
+            let skillsHtml = '';
+            if (job.primary_skills && job.primary_skills.length > 0) {
+                const skills = Array.isArray(job.primary_skills) ? job.primary_skills : 
+                              [job.primary_skills];
+                
+                skillsHtml = `
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="fas fa-tools me-1"></i>Key Skills:</small>
+                        <div class="skills-list mt-1">
+                            ${skills.slice(0, 3).map(skill => 
+                                `<span class="badge bg-light text-dark me-1 mb-1">${skill.trim()}</span>`
+                            ).join('')}
+                            ${skills.length > 3 ? `<span class="badge bg-secondary">+${skills.length - 3} more</span>` : ''}
                         </div>
-                        <div class="col-6">
-                            <small class="d-block">
-                                <i class="fas fa-heart text-primary me-1"></i>
-                                Interests: ${breakdown.interests}%
-                            </small>
-                        </div>
-                        <div class="col-6">
-                            <small class="d-block">
-                                <i class="fas fa-brain text-warning me-1"></i>
-                                Aptitude: ${breakdown.aptitude}%
-                            </small>
-                        </div>
-                        <div class="col-6">
-                            <small class="d-block">
-                                <i class="fas fa-file-alt text-info me-1"></i>
-                                Text: ${breakdown.text}%
-                            </small>
-                        </div>
-                        ${breakdown.field_boost > 0 ? `
+                    </div>
+                `;
+            }
+            
+            // Interest cluster info
+            const clusterInfo = job.primary_cluster || job.interest_clusters?.primary ? 
+                `<small class="d-block text-muted">
+                    <i class="fas fa-tag me-1"></i>
+                    ${job.primary_cluster || job.interest_clusters?.primary || ''}
+                </small>` : '';
+            
+            // Similarity breakdown
+            const breakdown = job.similarity_breakdown || {};
+            
+            // Field bonus display - NEW SECTION
+            let fieldBonusHtml = '';
+            if (breakdown.field_boost > 0) {
+                fieldBonusHtml = `
+                    <div class="mt-2">
+                        <span class="badge bg-info">
+                            <i class="fas fa-plus-circle me-1"></i>Field Bonus: +${breakdown.field_boost}%
+                        </span>
+                    </div>
+                `;
+            }
+            
+            // Similarity breakdown HTML
+            let breakdownHtml = '';
+            if (breakdown.riasec !== undefined) {
+                breakdownHtml = `
+                    <div class="mt-3 pt-2 border-top">
+                        <small class="text-muted">Match Breakdown:</small>
+                        <div class="row mt-1 g-1">
                             <div class="col-6">
                                 <small class="d-block">
-                                    <i class="fas fa-check-circle text-info me-1"></i>
-                                    Field: +${breakdown.field_boost}%
+                                    <i class="fas fa-user-tag text-success me-1"></i>
+                                    RIASEC: ${breakdown.riasec}%
                                 </small>
                             </div>
-                        ` : ''}
+                            <div class="col-6">
+                                <small class="d-block">
+                                    <i class="fas fa-heart text-primary me-1"></i>
+                                    Interests: ${breakdown.interests}%
+                                </small>
+                            </div>
+                            <div class="col-6">
+                                <small class="d-block">
+                                    <i class="fas fa-brain text-warning me-1"></i>
+                                    Aptitude: ${breakdown.aptitude}%
+                                </small>
+                            </div>
+                            <div class="col-6">
+                                <small class="d-block">
+                                    <i class="fas fa-file-alt text-info me-1"></i>
+                                    Text: ${breakdown.text}%
+                                </small>
+                            </div>
+                            ${breakdown.field_boost > 0 ? `
+                                <div class="col-12 mt-1">
+                                    <small class="d-block">
+                                        <i class="fas fa-plus-circle text-info me-1"></i>
+                                        <strong>Field Bonus: +${breakdown.field_boost}%</strong>
+                                    </small>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            clustersHtml += `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card job-card h-100 fade-in" 
+                         style="border-left: 4px solid ${getMatchColor(job.match_percentage)}; animation-delay: ${clusterIndex * 0.1 + jobIndex * 0.05}s">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div style="flex: 1;">
+                                    <h6 class="card-title mb-1">${job.job_title || 'Unknown Job'}</h6>
+                                    <p class="card-subtitle text-muted small mb-2">
+                                        <i class="fas fa-folder me-1"></i>${job.family_title || 'General'}
+                                    </p>
+                                </div>
+                                <div class="match-percentage" style="min-width: 70px; text-align: right;">
+                                    <span class="fw-bold" style="font-size: 1.8rem; color: ${getMatchColor(job.match_percentage)}">
+                                        ${job.match_percentage}%
+                                    </span>
+                                    <div class="text-muted small">Match</div>
+                                </div>
+                            </div>
+                            
+                            ${clusterInfo}
+                            
+                            <div class="mb-2">
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-user-tag me-1"></i>${job.riasec_code || 'N/A'}
+                                </span>
+                                ${fieldBonusHtml}
+                            </div>
+                            
+                            <p class="card-text small mb-3 flex-grow-1">
+                                ${job.job_description ? job.job_description.substring(0, 100) + '...' : 'No description available.'}
+                            </p>
+                            
+                            ${skillsHtml}
+                            
+                            ${breakdownHtml}
+                            
+                            <div class="mt-3 pt-2 border-top">
+                                <button class="btn btn-sm btn-outline-primary w-100" 
+                                        onclick="showJobDetails('${job.job_id}')">
+                                    <i class="fas fa-info-circle me-1"></i>View Details
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
-        }
+        });
         
-        return `
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card job-card h-100 fade-in" 
-                     style="border-left: 4px solid ${getMatchColor(job.match_percentage)}; animation-delay: ${delay}s">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div style="flex: 1;">
-                                <h6 class="card-title mb-1">${job.job_title || 'Unknown Job'}</h6>
-                                <p class="card-subtitle text-muted small mb-2">
-                                    <i class="fas fa-folder me-1"></i>${job.family_title || 'General'}
-                                </p>
-                            </div>
-                            <div class="match-percentage" style="min-width: 70px; text-align: right;">
-                                <span class="fw-bold" style="font-size: 1.8rem; color: ${getMatchColor(job.match_percentage)}">
-                                    ${job.match_percentage}%
-                                </span>
-                                <div class="text-muted small">Match</div>
-                            </div>
-                        </div>
-                        
-                        ${clusterInfo}
-                        
-                        <div class="mb-2">
-                            <span class="badge bg-secondary">
-                                <i class="fas fa-user-tag me-1"></i>${job.riasec_code || 'N/A'}
-                            </span>
-                        </div>
-                        
-                        <p class="card-text small mb-3 flex-grow-1">
-                            ${job.job_description ? job.job_description.substring(0, 120) + '...' : 'No description available.'}
-                        </p>
-                        
-                        ${skillsHtml}
-                        
-                        ${breakdownHtml}
-                        
-                        <div class="mt-3 pt-2 border-top">
-                            <button class="btn btn-sm btn-outline-primary w-100" 
-                                    onclick="showJobDetails('${job.job_id}')">
-                                <i class="fas fa-info-circle me-1"></i>View Details
-                            </button>
-                        </div>
-                    </div>
+        clustersHtml += `
                 </div>
             </div>
         `;
-    }).join('');
+        
+        clusterIndex++;
+    });
     
     container.innerHTML = statsHtml + `
         <div class="alert alert-success mb-4">
             <i class="fas fa-check-circle me-2"></i>
-            Found ${recommendationsList.length} jobs matching your profile with strict RIASEC-first filtering.
+            Found ${filterStats.high_quality_matches || window.recommendationsList.length} high-quality jobs in ${filterStats.clusters_count || clusters.length} interest clusters
             <small class="d-block mt-1">
                 <i class="fas fa-info-circle me-1"></i>
-                Jobs are filtered by RIASEC compatibility first, then scored by multiple factors.
+                Jobs are organized by interest clusters and filtered for 80%+ match quality.
+                <i class="fas fa-plus-circle ms-2 me-1 text-info"></i>
+                <strong>Field Bonus:</strong> Jobs related to your current field get +15% boost.
             </small>
         </div>
         
-        <div class="row">
-            ${jobsHtml}
+        ${clustersHtml}
+        
+        <!-- Cluster Summary -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Cluster Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    ${clusters.map((cluster, idx) => {
+                        const clusterName = cluster.cluster || 'Other';
+                        const clusterJobs = cluster.jobs || [];
+                        const clusterStats = cluster.cluster_stats || {};
+                        return `
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3" style="width: 20px; height: 20px; background-color: ${getClusterColor(idx)}; border-radius: 50%;"></div>
+                                    <div style="flex: 1;">
+                                        <strong>${clusterName}</strong>
+                                        <div class="small text-muted">
+                                            ${clusterJobs.length} jobs • Avg: ${clusterStats.average_match || 0}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
         </div>
     `;
-    
-    // Store the recommendations data globally for use in showJobDetails
-    window.recommendationsList = recommendationsList;
+}
+
+// NEW: Helper function to get color for each cluster
+function getClusterColor(index) {
+    const colors = [
+        '#3498db', // Blue
+        '#2ecc71', // Green
+        '#e74c3c', // Red
+        '#f39c12', // Orange
+        '#9b59b6', // Purple
+        '#1abc9c', // Turquoise
+        '#d35400', // Pumpkin
+        '#34495e', // Dark Blue
+        '#27ae60', // Nephritis
+        '#8e44ad'  // Wisteria
+    ];
+    return colors[index % colors.length];
 }
 
 // Helper function to get color based on match percentage
@@ -855,16 +993,18 @@ function generateJobDetailsHtml(job) {
     
     // Interest clusters
     let interestClustersHtml = '';
-    if (job.interest_clusters) {
-        const clusters = job.interest_clusters;
+    if (job.interest_clusters || job.primary_cluster) {
+        const clusters = job.interest_clusters || {};
+        const primaryCluster = job.primary_cluster || clusters.primary || '';
+        
         interestClustersHtml = `
             <h6><i class="fas fa-tags me-2"></i>Interest Clusters</h6>
             <div class="mb-4">
                 <div class="row">
-                    ${clusters.primary ? `
+                    ${primaryCluster ? `
                         <div class="col-md-6 mb-2">
-                            <small class="d-block text-muted">Primary:</small>
-                            <span class="badge bg-primary">${clusters.primary}</span>
+                            <small class="d-block text-muted">Primary Cluster:</small>
+                            <span class="badge bg-primary">${primaryCluster}</span>
                         </div>
                     ` : ''}
                     ${clusters.subcategories && clusters.subcategories.length > 0 ? `
