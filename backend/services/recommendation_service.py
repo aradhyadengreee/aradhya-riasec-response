@@ -336,180 +336,203 @@ class HierarchicalRecommendationService:
     
     def _score_job_hierarchical(self, user_profile: Dict, job: Dict) -> Dict:
         """
-        HIERARCHICAL SCORING:
-        1. RIASEC match (exact, binary: 100% if match, 0% if not)
-        2. Interest cluster match (MAX similarity with any user interest)
-        3. Aptitude match (vector similarity)
-        4. Text match (comprehensive vector similarity)
-        5. Field relevance boost (15%)
+        HIERARCHICAL SCORING WITH TRUE FIELD BONUS:
+        1. RIASEC match (40%)
+        2. Interest cluster match (35%)
+        3. Aptitude match (15%)
+        4. Text match (10%)
+        + FIELD BONUS (0–10 points added AFTER weighted score)
         """
         try:
-            # 1. RIASEC MATCH (already filtered, but calculate score)
+            # 1. RIASEC MATCH
             job_riasec = job.get('riasec_code', '')
             user_riasec_code = user_profile.get('riasec_code', '')
-            
-            # Clean both codes
+
             job_riasec_clean = str(job_riasec).strip().upper().replace(' ', '').replace(',', '')
             user_riasec_clean = str(user_riasec_code).strip().upper().replace(' ', '').replace(',', '')
-            
-            # RIASEC score: 100% if job code is subset/permutation of user code
+
             riasec_score = 0.0
             if job_riasec_clean and user_riasec_clean:
-                # Check if job code is permutation of user code
                 job_letters = set(job_riasec_clean)
                 user_letters = set(user_riasec_clean)
-                
+
                 if job_letters.issubset(user_letters):
-                    # Length-based scoring: longer matches are better
-                    base_score = 0.8  # Base for subset match
-                    length_bonus = len(job_riasec_clean) * 0.05  # 5% per letter
+                    base_score = 0.8
+                    length_bonus = len(job_riasec_clean) * 0.05
                     riasec_score = min(1.0, base_score + length_bonus)
-                    
-                    # Exact match bonus
+
                     if job_riasec_clean == user_riasec_clean:
                         riasec_score = 1.0
-            
-            # 2. INTEREST CLUSTER MATCH (per-interest, MAX similarity)
+
+            # 2. INTEREST MATCH
             user_interests = user_profile.get('interests', [])
             interest_score, matched_cluster = self._calculate_interest_cluster_similarity(user_interests, job)
-            
+
             # 3. APTITUDE MATCH
             user_aptitudes = user_profile.get('aptitude_percentiles', {})
             job_aptitudes = job.get('aptitude_scores', {})
             aptitude_score = self._calculate_aptitude_similarity(user_aptitudes, job_aptitudes)
-            
-            # 4. TEXT MATCH (comprehensive)
+
+            # 4. TEXT MATCH
             text_score = self._calculate_text_similarity(user_profile, job)
-            
-            # 5. FIELD RELEVANCE BOOST (15% fixed boost when field matches)
-            user_field = user_profile.get('current_field', '')
-            field_boost = 0.0
-            
-            if user_field and user_field.strip():
+
+            # ==========================
+            # ✅ IMPROVED FIELD BONUS LOGIC (0-15)
+            # ==========================
+            user_field = user_profile.get('current_field', '').lower().strip()
+            field_bonus = 0
+
+            if user_field and user_field not in ['', 'not specified', 'none', 'undefined']:
+                # Get job information
+                job_title = job.get('nco_title', '').lower()
+                job_family = job.get('family_title', '').lower()
+                job_desc = job.get('job_description', '').lower()
+                job_cluster = job.get('primary_interest_cluster', '').lower()
+                
+                # Get user's field keywords
                 user_field_lower = user_field.lower().strip()
                 
-                # Check in various job fields - more comprehensive list
-                job_fields_to_check = [
-                    job.get('family_title', ''),
-                    job.get('nco_title', ''),
-                    job.get('job_description', ''),
-                    job.get('primary_interest_cluster', ''),
-                    job.get('family_title', ''),  # Duplicate for emphasis
-                    ' '.join(job.get('primary_skills', []) if isinstance(job.get('primary_skills', []), list) else []),
-                    job.get('learning_pathway_recommendations', '')
-                ]
+                # Remove common filler words
+                filler_words = {'and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 
+                            'for', 'with', 'by', 'of', 'field', 'area', 'domain', 'sector'}
+                field_keywords = [w for w in user_field_lower.split() if w not in filler_words and len(w) > 2]
                 
-                # Get all text from job fields as a single string for better matching
-                all_job_text = ' '.join([str(field) for field in job_fields_to_check if field])
-                all_job_text_lower = all_job_text.lower()
-                
-                # Split user field into keywords (remove common words)
-                common_words = {'and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
-                field_keywords = [word for word in user_field_lower.split() 
-                                if word and len(word) > 2 and word not in common_words]
-                
-                # If no meaningful keywords, use the whole field
                 if not field_keywords:
                     field_keywords = [user_field_lower]
                 
-                # DEBUG: Log field matching attempt
-                logger.debug(f"Checking field match: User field='{user_field_lower}', Keywords={field_keywords}")
-                logger.debug(f"Job text preview: {all_job_text_lower[:200]}...")
+                # Combine all job text for checking
+                all_job_text = f"{job_title} {job_family} {job_desc} {job_cluster}".lower()
                 
-                # Check for matches
-                match_found = False
+                # ==========================
+                # STRICT FIELD BONUS RULES
+                # ==========================
+                
+                # RULE 1: EXACT JOB TITLE MATCH → +15
+                # User's field appears as the main part of job title
+                exact_title_match = False
                 for keyword in field_keywords:
-                    if keyword and len(keyword) > 2:
-                        # Check if keyword appears in job text
-                        if keyword in all_job_text_lower:
-                            field_boost = 0.15  # Fixed 15% boost
-                            match_found = True
-                            logger.debug(f"Field match found! Keyword '{keyword}' in job text. Field boost: {field_boost}")
+                    if len(keyword) > 4:
+                        # Check if keyword is in job title as a major component
+                        words_in_title = job_title.split()
+                        if keyword in words_in_title:
+                            # Check position - if it's first or second word, it's important
+                            if keyword in words_in_title[:2]:
+                                field_bonus = 15
+                                exact_title_match = True
+                                logger.debug(f"Exact title match: '{keyword}' in '{job_title}' → +15")
+                                break
+                
+                # RULE 2: JOB FAMILY/CATEGORY MATCH → +10
+                if not exact_title_match:
+                    for keyword in field_keywords:
+                        if len(keyword) > 4:
+                            # Check in job family (category)
+                            if keyword in job_family:
+                                field_bonus = 10
+                                exact_title_match = True
+                                logger.debug(f"Family match: '{keyword}' in '{job_family}' → +10")
+                                break
+                
+                # RULE 3: PRIMARY CLUSTER MATCH → +6
+                if not exact_title_match and matched_cluster:
+                    cluster_lower = matched_cluster.lower()
+                    for keyword in field_keywords:
+                        if len(keyword) > 4 and keyword in cluster_lower:
+                            field_bonus = 6
+                            exact_title_match = True
+                            logger.debug(f"Cluster match: '{keyword}' in '{cluster_lower}' → +6")
                             break
                 
-                # Also check for exact field match
-                if not match_found and user_field_lower in all_job_text_lower:
-                    field_boost = 0.15
-                    logger.debug(f"Exact field match found! '{user_field_lower}' in job text. Field boost: {field_boost}")
+                # RULE 4: SKILLS/DESCRIPTION MATCH → +4
+                if not exact_title_match:
+                    # Check job skills and description
+                    job_skills = ' '.join(job.get('primary_skills', []) if isinstance(job.get('primary_skills', []), list) else []).lower()
+                    learning_path = job.get('learning_pathway_recommendations', '').lower()
+                    
+                    skills_desc_text = f"{job_skills} {learning_path}".lower()
+                    
+                    keyword_hits = 0
+                    for keyword in field_keywords:
+                        if len(keyword) > 4:
+                            # Check in skills/description
+                            if keyword in skills_desc_text:
+                                keyword_hits += 1
+                    
+                    if keyword_hits >= 2:  # Need at least 2 keyword matches in skills/description
+                        field_bonus = 4
+                        logger.debug(f"Skills match: {keyword_hits} keywords → +4")
                 
-                # Check individual fields for stronger matches
-                if not match_found:
-                    for field_name, field_value in [
-                        ('family_title', job.get('family_title', '')),
-                        ('nco_title', job.get('nco_title', '')),
-                        ('primary_interest_cluster', job.get('primary_interest_cluster', ''))
-                    ]:
-                        if field_value and user_field_lower in field_value.lower():
-                            field_boost = 0.15
-                            logger.debug(f"Strong field match in {field_name}: '{user_field_lower}' in '{field_value}'. Field boost: {field_boost}")
-                            break
-            
-            # WEIGHTS (adjust based on importance)
+                # Log field bonus decision
+                if field_bonus > 0:
+                    logger.info(f"Field bonus {field_bonus} for '{job_title}' (user field: '{user_field}')")
+                else:
+                    logger.debug(f"No field bonus for '{job_title}' (user field: '{user_field}')")
+
+            # ==========================
+            # ✅ WEIGHTED SCORING
+            # ==========================
             weights = {
-                'riasec': 0.40,    # 40% - most important
-                'interests': 0.35,  # 35% - per-interest matching
-                'aptitude': 0.15,   # 15% - aptitude alignment
-                'text': 0.10        # 10% - overall text match
+                'riasec': 0.40,
+                'interests': 0.35,
+                'aptitude': 0.15,
+                'text': 0.10
             }
-            
-            # Calculate weighted score
+
             weighted_score = (
                 riasec_score * weights['riasec'] +
                 interest_score * weights['interests'] +
                 aptitude_score * weights['aptitude'] +
                 text_score * weights['text']
             )
-            
-            # Add field boost (15% when field matches)
-            final_score = min(1.0, weighted_score + field_boost)
-            
-            # Convert to percentage
-            match_percentage = round(final_score * 100)
-            
-            # Generate detailed reasoning
+
+            # ✅ Convert base to percentage FIRST
+            base_match_percent = weighted_score * 100
+
+            # ✅ ADD FIELD BONUS AS PURE POINTS
+            final_match_percent = min(100, round(base_match_percent + field_bonus))
+
+            # ==========================
+            # ✅ CORRECTED REASONING
+            # ==========================
             reasoning_parts = []
-            
+
             if riasec_score >= 0.9:
                 reasoning_parts.append(f"Perfect RIASEC match: {job_riasec}")
             elif riasec_score >= 0.7:
                 reasoning_parts.append(f"Strong RIASEC alignment: {job_riasec}")
-            
+
             if interest_score >= 0.8:
                 reasoning_parts.append(f"Excellent match with {matched_cluster} cluster")
             elif interest_score >= 0.6:
                 reasoning_parts.append(f"Good match with {matched_cluster} cluster")
-            
+
             if aptitude_score >= 0.7:
                 reasoning_parts.append("Strong aptitude fit")
-            
-            if field_boost >= 0.15:
-                reasoning_parts.append(f"Highly relevant to your field: {user_field} (+15% boost)")
-            elif field_boost > 0:
-                reasoning_parts.append(f"Relevant to your field: {user_field} (+{int(field_boost*100)}% boost)")
-            
+
+            # CORRECTED FIELD BONUS REASONING
+            if field_bonus == 15:
+                reasoning_parts.append(f"Perfect field-title match: {user_field} (+15 bonus)")
+            elif field_bonus == 10:
+                reasoning_parts.append(f"Field-category match: {user_field} (+10 bonus)")
+            elif field_bonus == 6:
+                reasoning_parts.append(f"Field-cluster alignment: {user_field} (+6 bonus)")
+            elif field_bonus == 4:
+                reasoning_parts.append(f"Skills/description match: {user_field} (+4 bonus)")
+
             reasoning = ". ".join(reasoning_parts) if reasoning_parts else "Good career match based on your profile"
-            
-            # Extract primary cluster for grouping
-            primary_cluster = job.get("primary_interest_cluster", "")
-            if not primary_cluster and matched_cluster:
-                primary_cluster = matched_cluster
-            
-            # DEBUG: Log final scores
-            logger.debug(f"Job {job.get('job_id')} scoring breakdown:")
-            logger.debug(f"  RIASEC: {riasec_score:.2f} ({riasec_score*100:.0f}%)")
-            logger.debug(f"  Interests: {interest_score:.2f} ({interest_score*100:.0f}%)")
-            logger.debug(f"  Aptitude: {aptitude_score:.2f} ({aptitude_score*100:.0f}%)")
-            logger.debug(f"  Text: {text_score:.2f} ({text_score*100:.0f}%)")
-            logger.debug(f"  Field boost: {field_boost:.2f} ({field_boost*100:.0f}%)")
-            logger.debug(f"  Weighted score: {weighted_score:.2f} ({weighted_score*100:.0f}%)")
-            logger.debug(f"  Final score: {final_score:.2f} ({match_percentage}%)")
-            
+
+            # ==========================
+            # ✅ FINAL OUTPUT
+            # ==========================
+            primary_cluster = job.get("primary_interest_cluster", "") or matched_cluster
+
             return {
                 "job_id": job.get("job_id", ""),
                 "job_title": job.get("nco_title", ""),
                 "family_title": job.get("family_title", ""),
                 "riasec_code": job.get("riasec_code", ""),
-                "match_percentage": match_percentage,
+                "match_percentage": final_match_percent,
+
                 "job_description": job.get("job_description", ""),
                 "primary_skills": job.get("primary_skills", []),
                 "salary_range": job.get("salary_range_analysis", "Not specified"),
@@ -517,26 +540,31 @@ class HierarchicalRecommendationService:
                 "growth_projection": job.get("industry_growth_projection", ""),
                 "learning_pathway": job.get("learning_pathway_recommendations", ""),
                 "aptitude_scores": job.get("aptitude_scores", {}),
+
                 "similarity_breakdown": {
                     "riasec": round(riasec_score * 100),
                     "interests": round(interest_score * 100),
                     "aptitude": round(aptitude_score * 100),
                     "text": round(text_score * 100),
-                    "field_boost": round(field_boost * 100)
+                    "field_bonus": field_bonus
                 },
-                "weighted_score": round(weighted_score * 100, 1),
-                "final_score": final_score,
+
+                "weighted_score": round(base_match_percent, 1),
+                "final_score": final_match_percent / 100,
+                "field_bonus": field_bonus,
+
                 "reasoning": reasoning,
                 "primary_cluster": primary_cluster,
                 "matched_cluster": matched_cluster,
                 "all_clusters": self._extract_job_clusters(job),
+
                 "interest_clusters": {
                     "primary": primary_cluster,
                     "subcategories": job.get("interest_cluster_subcategories", []),
                     "secondary": job.get("secondary_interest_clusters", [])
                 }
             }
-            
+
         except Exception as e:
             logger.error(f"Error scoring job {job.get('job_id')}: {e}")
             return {
@@ -549,10 +577,11 @@ class HierarchicalRecommendationService:
                     "interests": 0,
                     "aptitude": 0,
                     "text": 0,
-                    "field_boost": 0
+                    "field_bonus": 0
                 },
                 "reasoning": f"Error in calculation: {str(e)}"
             }
+
     
     def _organize_by_clusters(self, jobs: List[Dict]) -> Dict[str, List[Dict]]:
         """
