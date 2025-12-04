@@ -138,6 +138,3 @@ htmlcov/
 .pypytest_cache/
 .mypy_cache/
 .pytype/
-
-
-!.env.example
