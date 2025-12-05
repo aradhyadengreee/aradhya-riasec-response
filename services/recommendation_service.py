@@ -411,7 +411,7 @@ class HierarchicalRecommendationService:
                 # User's field appears as the main part of job title
                 exact_title_match = False
                 for keyword in field_keywords:
-                    if len(keyword) > 4:
+                    if len(keyword) >= 4:
                         # Check if keyword is in job title as a major component
                         words_in_title = job_title.split()
                         if keyword in words_in_title:
@@ -425,7 +425,7 @@ class HierarchicalRecommendationService:
                 # RULE 2: JOB FAMILY/CATEGORY MATCH → +10
                 if not exact_title_match:
                     for keyword in field_keywords:
-                        if len(keyword) > 4:
+                        if len(keyword) >= 4:
                             # Check in job family (category)
                             if keyword in job_family:
                                 field_bonus = 10
@@ -437,7 +437,7 @@ class HierarchicalRecommendationService:
                 if not exact_title_match and matched_cluster:
                     cluster_lower = matched_cluster.lower()
                     for keyword in field_keywords:
-                        if len(keyword) > 4 and keyword in cluster_lower:
+                        if len(keyword) >= 4 and keyword in cluster_lower:
                             field_bonus = 6
                             exact_title_match = True
                             logger.debug(f"Cluster match: '{keyword}' in '{cluster_lower}' → +6")
@@ -453,7 +453,7 @@ class HierarchicalRecommendationService:
                     
                     keyword_hits = 0
                     for keyword in field_keywords:
-                        if len(keyword) > 4:
+                        if len(keyword) >= 4:
                             # Check in skills/description
                             if keyword in skills_desc_text:
                                 keyword_hits += 1
